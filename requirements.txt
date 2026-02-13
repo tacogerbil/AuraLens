@@ -2,5 +2,6 @@ PySide6>=6.6.0
 pdf2image>=1.16.3
 Pillow>=10.0.0
 requests>=2.31.0
+ebooklib>=0.18
 pytest>=7.4.0
 pytest-mock>=3.12.0

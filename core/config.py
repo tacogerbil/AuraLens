@@ -15,7 +15,7 @@ DEFAULT_SYSTEM_PROMPT = (
     "Output only the raw extracted text."
 )
 
-CONFIG_DIR = Path.home() / ".auralens"
+CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
 CONFIG_PATH = CONFIG_DIR / "settings.json"
 
 

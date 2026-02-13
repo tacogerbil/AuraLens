@@ -1,8 +1,13 @@
-"""Assemble extracted page texts into a complete book output."""
+"""Assemble extracted page texts into a complete book output.
+
+Supports plain text, Markdown, and EPUB formats.
+"""
 
 import logging
 from pathlib import Path
 from typing import List
+
+from ebooklib import epub
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +37,7 @@ class BookAssembler:
         return "".join(parts)
 
     def save_to_file(self, page_texts: List[str], output_path: Path) -> None:
-        """Assemble and write to file. I/O boundary."""
+        """Assemble and write to .txt file. I/O boundary."""
         content = self.assemble(page_texts)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(content, encoding="utf-8")
@@ -42,3 +47,63 @@ class BookAssembler:
             len(content),
             output_path,
         )
+
+    def assemble_markdown(self, page_texts: List[str]) -> str:
+        """Combine page texts with Markdown horizontal rules as separators."""
+        if not page_texts:
+            return ""
+        return "\n\n---\n\n".join(page_texts)
+
+    def save_as_markdown(
+        self, page_texts: List[str], output_path: Path
+    ) -> None:
+        """Save as .md with horizontal rule page breaks."""
+        content = self.assemble_markdown(page_texts)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(content, encoding="utf-8")
+        logger.info("Saved Markdown: %d pages to %s", len(page_texts), output_path)
+
+    def save_as_epub(
+        self,
+        page_texts: List[str],
+        output_path: Path,
+        title: str = "Untitled",
+        author: str = "AuraLens",
+    ) -> None:
+        """Save as .epub with one chapter per page. Text only, no images."""
+        book = epub.EpubBook()
+        book.set_identifier("auralens-" + title.replace(" ", "-").lower())
+        book.set_title(title)
+        book.set_language("en")
+        book.add_author(author)
+
+        chapters = self._build_epub_chapters(page_texts)
+        for chapter in chapters:
+            book.add_item(chapter)
+
+        book.toc = chapters
+        book.add_item(epub.EpubNcx())
+        book.add_item(epub.EpubNav())
+        book.spine = ["nav"] + chapters
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        epub.write_epub(str(output_path), book)
+        logger.info("Saved EPUB: %d chapters to %s", len(chapters), output_path)
+
+    @staticmethod
+    def _build_epub_chapters(page_texts: List[str]) -> List[epub.EpubHtml]:
+        """Create one EpubHtml chapter per page."""
+        chapters: List[epub.EpubHtml] = []
+        for i, text in enumerate(page_texts):
+            page_num = i + 1
+            chapter = epub.EpubHtml(
+                title=f"Page {page_num}",
+                file_name=f"page_{page_num:03d}.xhtml",
+                lang="en",
+            )
+            escaped = text.replace("&", "&amp;").replace("<", "&lt;")
+            paragraphs = escaped.split("\n\n")
+            html_body = "".join(f"<p>{p}</p>" for p in paragraphs if p.strip())
+            chapter.content = f"<h2>Page {page_num}</h2>{html_body}"
+            chapters.append(chapter)
+        return chapters
