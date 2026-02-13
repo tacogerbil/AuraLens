@@ -1,0 +1,155 @@
+"""VLM API client for OpenWebUI chat/completions with vision support."""
+
+import logging
+import time
+from typing import Any, Dict, List, Optional
+
+import requests
+
+logger = logging.getLogger(__name__)
+
+RETRY_BACKOFF_SECONDS = 5.0
+MAX_RETRIES = 1
+
+
+# --- Exceptions ---
+
+
+class VLMError(Exception):
+    """Base exception for VLM client errors."""
+
+
+class VLMAuthError(VLMError):
+    """Raised on 401/403 authentication failures."""
+
+
+class VLMModelNotFoundError(VLMError):
+    """Raised on 404 — model not found or wrong endpoint."""
+
+
+class VLMTimeoutError(VLMError):
+    """Raised when the VLM request times out after retries."""
+
+
+# --- Client ---
+
+
+class VLMClient:
+    """Stateless VLM API client. All config injected via constructor."""
+
+    def __init__(
+        self,
+        api_url: str,
+        api_key: str,
+        model_name: str,
+        timeout: int = 120,
+        max_tokens: int = 4096,
+        temperature: float = 0.0,
+    ) -> None:
+        self._api_url = api_url
+        self._api_key = api_key
+        self._model_name = model_name
+        self._timeout = timeout
+        self._max_tokens = max_tokens
+        self._temperature = temperature
+
+    def process_image(self, image_data_uri: str, prompt: str) -> str:
+        """Send image + prompt to VLM, return extracted text. Retries once on transient errors."""
+        last_error: Optional[Exception] = None
+
+        for attempt in range(1 + MAX_RETRIES):
+            try:
+                response_json = self._send_request(image_data_uri, prompt)
+                return self._extract_text(response_json)
+            except (VLMAuthError, VLMModelNotFoundError):
+                raise
+            except VLMTimeoutError as exc:
+                last_error = exc
+                if not self._should_retry(attempt):
+                    break
+                logger.warning("Timeout on attempt %d, retrying...", attempt + 1)
+                time.sleep(RETRY_BACKOFF_SECONDS)
+            except VLMError as exc:
+                last_error = exc
+                if not self._should_retry(attempt):
+                    break
+                logger.warning("Error on attempt %d: %s, retrying...", attempt + 1, exc)
+                time.sleep(RETRY_BACKOFF_SECONDS)
+
+        raise VLMError(f"VLM request failed after {1 + MAX_RETRIES} attempts: {last_error}")
+
+    def _build_headers(self) -> Dict[str, str]:
+        """Construct HTTP headers with auth token."""
+        headers: Dict[str, str] = {"Content-Type": "application/json"}
+        if self._api_key:
+            headers["Authorization"] = f"Bearer {self._api_key}"
+        return headers
+
+    def _build_payload(
+        self, image_data_uri: str, prompt: str
+    ) -> Dict[str, Any]:
+        """Construct OpenAI-compatible multimodal chat payload."""
+        content: List[Dict[str, Any]] = [
+            {"type": "text", "text": prompt},
+            {
+                "type": "image_url",
+                "image_url": {"url": image_data_uri},
+            },
+        ]
+        return {
+            "model": self._model_name,
+            "messages": [{"role": "user", "content": content}],
+            "stream": False,
+            "temperature": self._temperature,
+            "max_tokens": self._max_tokens,
+        }
+
+    def _send_request(
+        self, image_data_uri: str, prompt: str
+    ) -> Dict[str, Any]:
+        """Execute HTTP POST to VLM API. Raises typed exceptions on failure."""
+        headers = self._build_headers()
+        payload = self._build_payload(image_data_uri, prompt)
+
+        try:
+            response = requests.post(
+                self._api_url,
+                json=payload,
+                headers=headers,
+                timeout=self._timeout,
+            )
+        except requests.exceptions.Timeout as exc:
+            raise VLMTimeoutError(f"Request timed out after {self._timeout}s") from exc
+        except requests.exceptions.ConnectionError as exc:
+            raise VLMError(f"Connection failed: {exc}") from exc
+
+        self._check_status(response)
+        return response.json()
+
+    def _check_status(self, response: requests.Response) -> None:
+        """Map HTTP status codes to typed exceptions."""
+        code = response.status_code
+        if code in (401, 403):
+            raise VLMAuthError(f"Authentication failed (HTTP {code})")
+        if code == 404:
+            raise VLMModelNotFoundError(
+                f"Model or endpoint not found (HTTP 404): {self._api_url}"
+            )
+        if code >= 500:
+            raise VLMError(f"Server error (HTTP {code}): {response.text[:200]}")
+        if code >= 400:
+            raise VLMError(f"Client error (HTTP {code}): {response.text[:200]}")
+
+    def _extract_text(self, response_json: Dict[str, Any]) -> str:
+        """Parse text content from OpenAI chat/completions response."""
+        try:
+            return response_json["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise VLMError(
+                f"Unexpected response format: {list(response_json.keys())}"
+            ) from exc
+
+    @staticmethod
+    def _should_retry(attempt: int) -> bool:
+        """Return True if more retry attempts remain."""
+        return attempt < MAX_RETRIES
