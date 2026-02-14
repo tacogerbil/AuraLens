@@ -42,6 +42,8 @@ class PageViewer(QWidget):
         layout = QVBoxLayout(self)
 
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
+        self._splitter.setHandleWidth(8)  # Make handle more visible
+        self._splitter.setChildrenCollapsible(False)  # Prevent collapsing panels
         self._setup_image_panel()
         self._setup_text_panel()
         layout.addWidget(self._splitter)
