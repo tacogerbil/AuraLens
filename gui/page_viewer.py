@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import List, Optional
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont, QPixmap
 from PySide6.QtWidgets import (
     QGraphicsPixmapItem,
@@ -23,6 +23,8 @@ from gui.zoomable_view import ZoomableGraphicsView
 
 class PageViewer(QWidget):
     """Side-by-side viewer: original page image | editable extracted text."""
+
+    re_scan_requested = Signal(int)  # page_num
 
     def __init__(self) -> None:
         super().__init__()
@@ -80,6 +82,11 @@ class PageViewer(QWidget):
 
         self._total_label = QLabel("of 0")
         nav.addWidget(self._total_label)
+
+        self._re_scan_btn = QPushButton("Re-Scan Page")
+        self._re_scan_btn.setToolTip("Re-process this page with the VLM")
+        self._re_scan_btn.clicked.connect(self._on_re_scan)
+        nav.addWidget(self._re_scan_btn)
 
         nav.addStretch()
 
@@ -176,3 +183,8 @@ class PageViewer(QWidget):
         """Navigate to the page selected in the spinbox."""
         if 1 <= value <= self._total_pages and value != self._current_page:
             self._navigate_to(value)
+
+    def _on_re_scan(self) -> None:
+        """Request a re-scan of the current page."""
+        if self._current_page > 0:
+            self.re_scan_requested.emit(self._current_page)

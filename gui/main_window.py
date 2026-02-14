@@ -83,6 +83,7 @@ class MainWindow(QMainWindow):
         self._stack.addWidget(self._image_review_widget)  # 2
 
         self._page_viewer = PageViewer()
+        self._page_viewer.re_scan_requested.connect(self._on_re_scan_page)
         self._stack.addWidget(self._page_viewer)          # 3
 
         self.setCentralWidget(self._central)
@@ -319,6 +320,14 @@ class MainWindow(QMainWindow):
         self._stack.setCurrentIndex(_IDX_PROCESSING)
 
         cfg = self._config
+        
+        # Resume support: check for already processed pages in the output file
+        output_path = self._get_incremental_path()
+        assembler = BookAssembler()
+        skipped_pages = assembler.get_completed_pages(output_path)
+        if skipped_pages:
+            logger.info("Resuming OCR. Skipping %d pages: %s", len(skipped_pages), sorted(skipped_pages))
+
         self._worker = OCRWorker(
             page_paths=page_paths,
             api_url=cfg.api_url,
@@ -328,6 +337,7 @@ class MainWindow(QMainWindow):
             max_tokens=cfg.max_tokens,
             temperature=cfg.temperature,
             system_prompt=cfg.system_prompt,
+            skip_pages=skipped_pages,
         )
         self._worker.page_started.connect(self._on_page_started)
         self._worker.page_completed.connect(self._on_page_completed)
@@ -337,7 +347,7 @@ class MainWindow(QMainWindow):
         self._processing_widget.start(
             f"OCR: {self._cache_dir.name}", len(page_paths),
         )
-        self._set_status("Starting OCR...")
+        self._set_status(f"Starting OCR (Resuming {len(skipped_pages)} pages)...")
         self._worker.start()
 
     def _on_page_started(self, page_num: int, total: int) -> None:
@@ -353,6 +363,7 @@ class MainWindow(QMainWindow):
         self._page_texts[page_num - 1] = text
         self._processing_widget.update_page(page_num, total)
         self._set_status(f"OCR done: page {page_num}/{total}")
+        self._auto_save_incremental()
 
     def _on_page_error(self, page_num: int, error_msg: str) -> None:
         """Store error marker for failed page."""
@@ -387,18 +398,121 @@ class MainWindow(QMainWindow):
                 self._stack.setCurrentIndex(_IDX_PAGE_VIEWER)
             self._set_status(f"Done: {ok_count} pages processed")
 
-    # ── Auto-save (inbox mode) ──────────────────────────────────────
-
-    def _auto_save_to_outbox(self) -> None:
-        """Save processed text to outbox_dir as .txt (inbox auto-mode)."""
-        if not self._page_texts or not self._current_pdf_path:
+    def _on_re_scan_page(self, page_num: int) -> None:
+        """Re-process a single page triggered by the viewer."""
+        if not self._cache_dir or self._is_processing:
+            logger.warning("Cannot re-scan: busy or no cache dir")
             return
 
+        page_paths = list_cached_pages(self._cache_dir)
+        if page_num < 1 or page_num > len(page_paths):
+            return
+
+        # We only process the one page
+        target_path = page_paths[page_num - 1]
+        logger.info("Re-scanning page %d: %s", page_num, target_path)
+
+        cfg = self._config
+        self._is_processing = True
+        self._set_status(f"Re-scanning page {page_num}...")
+        
+        # Disable actions during re-scan (optional, but good for safety)
+        self._update_action_states()
+
+        # Create a ephemeral worker just for this page
+        # Note: We must verify if we need to keep a reference to avoid GC
+        self._worker = OCRWorker(
+            page_paths=[target_path],
+            api_url=cfg.api_url,
+            api_key=cfg.api_key,
+            model_name=cfg.model_name,
+            timeout=cfg.timeout,
+            max_tokens=cfg.max_tokens,
+            temperature=cfg.temperature,
+            system_prompt=cfg.system_prompt,
+        )
+        # We need a custom completion handler that knows which page it was
+        # But OCRWorker emits page_completed(page_num, total, text)
+        # However, since we passed a list of 1, page_num will be 1.
+        # We need to map it back to the absolute page_num.
+        
+        # Solution: Use a lambda or partial, OR just rely on the fact that we know 
+        # which page we requested? 
+        # Actually, OCRWorker emits relative page number. 
+        # Let's attach the absolute page_num to the worker or closure.
+        
+        self._worker.page_completed.connect(
+            lambda _, __, text: self._on_re_scan_completed(page_num, text)
+        )
+        self._worker.page_error.connect(
+            lambda _, err: self._on_page_error(page_num, err)
+        )
+        
+        # We also need to finish the worker state
+        self._worker.processing_finished.connect(self._on_re_scan_finished)
+        
+        self._worker.start()
+
+    def _on_re_scan_completed(self, page_num: int, text: str) -> None:
+        """Handle new text from re-scan."""
+        logger.info("Re-scan finished for page %d", page_num)
+        self._page_texts[page_num - 1] = text
+        self._auto_save_incremental()
+        # Update the viewer with the new text immediately
+        self._page_viewer.load_pages(
+            list_cached_pages(self._cache_dir), self._page_texts
+        )
+        # Restore view to that page
+        self._page_viewer._navigate_to(page_num)
+        self._set_status(f"Re-scan complete: Page {page_num}")
+
+    def _on_re_scan_finished(self) -> None:
+        """Cleanup after re-scan."""
+        self._is_processing = False
+        self._worker = None
+        self._update_action_states()
+
+    # ── Auto-save (inbox mode & incremental) ───────────────────────
+
+    def _auto_save_to_outbox(self) -> None:
+        """Final save to outbox_dir as .txt (inbox auto-mode)."""
+        self._save_output_file()
+
+    def _auto_save_incremental(self) -> None:
+        """Incrementally save progress to the output file."""
+        # Only save if we have a path or specific setting
+        # For now, we mirror the logic of auto-save but for all modes if desired
+        # Or strictly follow the plan: overwrite the destination file
+        if not self._current_pdf_path:
+            return
+        
+        try:
+            path = self._get_incremental_path()
+            assembler = BookAssembler()
+            # We save everything we have so far (including empty slots/errors)
+            # Filter out None/Empty for cleaner partials? 
+            # No, keep structure so page numbers align.
+            # But BookAssembler treats list index as page num.
+            assembler.save_to_file(self._page_texts, path)
+        except Exception as e:
+            logger.error("Incremental save failed: %s", e)
+
+    def _get_incremental_path(self) -> Path:
+        """Determine where to save the incremental book."""
         outbox = self._config.outbox_dir.strip()
         if not outbox:
             outbox = str(self._current_pdf_path.parent)
+        
+        # We use the final filename so the user sees it grow.
+        # If we wanted a temp name, we'd append .part
+        return Path(outbox) / f"{self._current_pdf_path.stem}.txt"
 
-        output_path = Path(outbox) / f"{self._current_pdf_path.stem}.txt"
+    def _save_output_file(self) -> None:
+        """Helper to save current text to the configured output."""
+        if not self._page_texts or not self._current_pdf_path:
+            return
+
+        output_path = self._get_incremental_path()
         assembler = BookAssembler()
         assembler.save_to_file(self._page_texts, output_path)
         logger.info("Auto-saved: %s", output_path)

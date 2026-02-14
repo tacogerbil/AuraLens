@@ -6,7 +6,7 @@ Stage 2: OCRWorker — JPEG images → VLM → extracted text (slow).
 
 import logging
 from pathlib import Path
-from typing import List
+from typing import List, Set, Tuple
 
 from PySide6.QtCore import QThread, Signal
 
@@ -62,12 +62,15 @@ class ExtractionWorker(QThread):
                 break
 
             output = page_image_path(cache_dir, page_num)
-            extract_single_page(
-                self._pdf_path, page_num, output,
-                dpi=self._dpi,
-                max_pixels=self._max_pixels,
-                jpeg_quality=self._jpeg_quality,
-            )
+            if output.exists():
+                logger.info("Skipping extraction for page %d (exists)", page_num)
+            else:
+                extract_single_page(
+                    self._pdf_path, page_num, output,
+                    dpi=self._dpi,
+                    max_pixels=self._max_pixels,
+                    jpeg_quality=self._jpeg_quality,
+                )
             self.page_extracted.emit(page_num, total)
 
         self.extraction_finished.emit(str(cache_dir), total)
@@ -94,6 +97,7 @@ class OCRWorker(QThread):
         max_tokens: int,
         temperature: float,
         system_prompt: str,
+        skip_pages: Set[int] = None,
     ) -> None:
         super().__init__()
         self._page_paths = page_paths
@@ -104,6 +108,7 @@ class OCRWorker(QThread):
         self._max_tokens = max_tokens
         self._temperature = temperature
         self._system_prompt = system_prompt
+        self._skip_pages = skip_pages or set()
         self._cancelled = False
 
     def cancel(self) -> None:
@@ -137,6 +142,12 @@ class OCRWorker(QThread):
                 break
 
             self.page_started.emit(page_num, total)
+
+            if page_num in self._skip_pages:
+                logger.info("Skipping OCR for page %d (already done)", page_num)
+                # Emit empty/placeholder text so UI progresses
+                self.page_completed.emit(page_num, total, "")
+                continue
 
             try:
                 text = self._ocr_single_page(client, page_path)
