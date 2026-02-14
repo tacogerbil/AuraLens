@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 
 from core.config import Config, save_config
 from core.config_validator import ConfigValidator
+from core.page_cache import save_page_text, list_cached_page_texts
 from core.workflow_orchestrator import WorkflowOrchestrator
 from gui.image_review_widget import ImageReviewWidget
 from gui.inbox_coordinator import InboxCoordinator
@@ -333,16 +334,20 @@ class MainWindow(QMainWindow):
         self, page_num: int, total: int, text: str
     ) -> None:
         """Store extracted text and update progress."""
+        # Save to individual page file
+        save_page_text(self._cache_dir, page_num, text)
+        
+        # Also update in-memory list for compatibility
         self._ensure_page_slots(page_num)
         self._page_texts[page_num - 1] = text
-        self._save_manager.save_incremental(
-            self._page_texts, self._current_pdf_path
-        )
 
     def _on_page_error(self, page_num: int, error_msg: str) -> None:
         """Store error marker for failed page."""
+        error_text = f"[ERROR: {error_msg}]"
+        save_page_text(self._cache_dir, page_num, error_text)
+        
         self._ensure_page_slots(page_num)
-        self._page_texts[page_num - 1] = f"[ERROR: {error_msg}]"
+        self._page_texts[page_num - 1] = error_text
 
     def _on_ocr_finished(self) -> None:
         """OCR done — auto-save or switch to page viewer."""
@@ -350,6 +355,8 @@ class MainWindow(QMainWindow):
         self._is_processing = False
         self._update_action_states()
 
+        # Load all page texts from individual files
+        self._page_texts = list_cached_page_texts(self._cache_dir)
         ok_count = sum(
             1 for t in self._page_texts if t and not t.startswith("[ERROR")
         )
@@ -421,11 +428,14 @@ class MainWindow(QMainWindow):
     def _on_re_scan_completed(self, page_num: int, text: str) -> None:
         """Handle new text from re-scan."""
         logger.info("Re-scan finished for page %d", page_num)
-        self._page_texts[page_num - 1] = text
-        self._save_manager.save_incremental(
-            self._page_texts, self._current_pdf_path
-        )
         
+        # Save to individual page file
+        save_page_text(self._cache_dir, page_num, text)
+        
+        # Update in-memory list
+        self._page_texts[page_num - 1] = text
+        
+        # Reload page viewer with updated text
         page_paths = self._orchestrator.get_page_paths_from_cache(
             self._cache_dir
         )

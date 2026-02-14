@@ -24,6 +24,39 @@ def page_image_path(cache_dir: Path, page_num: int) -> Path:
     return cache_dir / f"page_{page_num:03d}.jpg"
 
 
+def page_text_path(cache_dir: Path, page_num: int) -> Path:
+    """Return path for page_NNN.txt (1-indexed, zero-padded to 3 digits)."""
+    return cache_dir / f"page_{page_num:03d}.txt"
+
+
+def save_page_text(cache_dir: Path, page_num: int, text: str) -> None:
+    """Save OCR text for a single page to cache."""
+    text_path = page_text_path(cache_dir, page_num)
+    text_path.write_text(text, encoding="utf-8")
+    logger.debug("Saved page %d text to %s", page_num, text_path)
+
+
+def load_page_text(cache_dir: Path, page_num: int) -> str:
+    """Load OCR text for a single page from cache.
+    
+    Returns empty string if file doesn't exist.
+    """
+    text_path = page_text_path(cache_dir, page_num)
+    if not text_path.exists():
+        return ""
+    return text_path.read_text(encoding="utf-8")
+
+
+def list_cached_page_texts(cache_dir: Path) -> List[str]:
+    """Load all page texts in order, returning empty strings for missing pages."""
+    page_images = list_cached_pages(cache_dir)
+    texts = []
+    for i, _ in enumerate(page_images, start=1):
+        texts.append(load_page_text(cache_dir, i))
+    return texts
+
+
+
 def list_cached_pages(cache_dir: Path) -> List[Path]:
     """Return sorted list of page_NNN.jpg files in cache dir."""
     if not cache_dir.is_dir():
