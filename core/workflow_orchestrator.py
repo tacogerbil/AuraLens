@@ -64,6 +64,35 @@ class WorkflowOrchestrator:
             "system_prompt": self._config.system_prompt,
         }
 
+    def is_fully_cached(self, cache_dir: Path) -> bool:
+        """Check if all pages have both images and text in cache.
+        
+        Args:
+            cache_dir: Cache directory to check
+            
+        Returns:
+            True if cache is complete (all pages have images and text),
+            False otherwise (empty cache, missing images, or missing text)
+        """
+        from core.page_cache import page_text_path
+        
+        page_images = list_cached_pages(cache_dir)
+        if not page_images:
+            return False
+        
+        # Verify all pages have corresponding text files
+        for idx, _ in enumerate(page_images, start=1):
+            text_file = page_text_path(cache_dir, idx)
+            if not text_file.exists() or text_file.stat().st_size == 0:
+                return False
+        
+        logger.info(
+            "Cache complete: %d pages with images and text in %s",
+            len(page_images),
+            cache_dir
+        )
+        return True
+
     def calculate_resume_pages(
         self, cache_dir: Path
     ) -> Set[int]:

@@ -216,7 +216,18 @@ class MainWindow(QMainWindow):
         """Start two-stage processing: extraction then OCR."""
         if not self._validate_config():
             return
-        self._start_extraction()
+        
+        # Check if cache exists and is complete
+        self._cache_dir = self._orchestrator.get_cache_dir_for_pdf(
+            self._current_pdf_path
+        )
+        
+        if self._orchestrator.is_fully_cached(self._cache_dir):
+            # Load from cache and skip to comparison view
+            self._load_from_cache()
+        else:
+            # Normal processing flow
+            self._start_extraction()
 
     def _on_save_book(self) -> None:
         """Save processed text in chosen format."""
@@ -261,6 +272,30 @@ class MainWindow(QMainWindow):
             self._inbox_monitor.stop()
             if self._config.inbox_dir.strip():
                 self._inbox_monitor.start(self._config.inbox_dir)
+
+    # ── Cache loading ───────────────────────────────────────────────
+
+    def _load_from_cache(self) -> None:
+        """Load cached data and show comparison view directly."""
+        from core.page_cache import list_cached_page_texts
+        
+        logger.info("Loading from cache: %s", self._cache_dir)
+        
+        # Load all page texts from cache
+        self._page_texts = list_cached_page_texts(self._cache_dir)
+        
+        # Load page image paths
+        page_paths = self._orchestrator.get_page_paths_from_cache(
+            self._cache_dir
+        )
+        
+        # Show comparison view
+        self._page_viewer.load_pages(page_paths, self._page_texts)
+        self._stack.setCurrentIndex(_IDX_PAGE_VIEWER)
+        
+        # Update status
+        self._set_status(f"Loaded {len(self._page_texts)} pages from cache")
+        self._update_action_states()
 
     # ── Extraction stage ────────────────────────────────────────────
 
