@@ -42,19 +42,24 @@ class PageViewer(QWidget):
         layout = QVBoxLayout(self)
 
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
-        self._splitter.setHandleWidth(8)  # Make handle more visible
+        self._splitter.setHandleWidth(20)  # Wide handle for easy grabbing
         self._splitter.setChildrenCollapsible(False)  # Prevent collapsing panels
         
-        # Style the splitter handle to be visible
+        # Style the splitter handle to be visible and show resize cursor
         self._splitter.setStyleSheet("""
             QSplitter::handle {
                 background-color: #cccccc;
                 border: 1px solid #999999;
+                width: 20px;
             }
             QSplitter::handle:hover {
                 background-color: #4a90e2;
             }
         """)
+        
+        # Ensure cursor changes to resize cursor on handle
+        self._splitter.handle(1).setCursor(Qt.CursorShape.SplitHCursor)
+
         
         self._setup_image_panel()
         self._setup_text_panel()
@@ -73,7 +78,7 @@ class PageViewer(QWidget):
     def _setup_text_panel(self) -> None:
         """Right panel: editable plain text editor."""
         self._text_edit = QPlainTextEdit()
-        self._text_edit.setFont(QFont("monospace", 10))
+        self._text_edit.setFont(QFont("monospace", 12))
         self._text_edit.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
         self._splitter.addWidget(self._text_edit)
         

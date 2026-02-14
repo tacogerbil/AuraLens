@@ -70,7 +70,8 @@ class MainWindow(QMainWindow):
 
         # UI setup
         self.setWindowTitle("AuraLens")
-        self.setMinimumSize(800, 600)  # Set minimum size instead of fixed size
+        self.setMinimumSize(800, 600)  # Minimum size to prevent too-small window
+        self.resize(1600, 1000)  # Initial size, but user can resize
 
         self._setup_central_widget()
         self._setup_toolbar()
