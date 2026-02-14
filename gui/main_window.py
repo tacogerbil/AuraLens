@@ -140,6 +140,14 @@ class MainWindow(QMainWindow):
         
         # Add size grip for easier window resizing
         self._size_grip = QSizeGrip(self)
+        self._size_grip.setStyleSheet("""
+            QSizeGrip {
+                background-color: #d0d0d0;
+                border: 1px solid #999999;
+                width: 16px;
+                height: 16px;
+            }
+        """)
         self.statusBar().addPermanentWidget(self._size_grip)
 
     def _set_status(self, text: str) -> None:

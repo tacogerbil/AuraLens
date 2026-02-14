@@ -57,15 +57,15 @@ class PageViewer(QWidget):
             }
         """)
         
-        # Ensure cursor changes to resize cursor on handle
-        self._splitter.handle(1).setCursor(Qt.CursorShape.SplitHCursor)
-
-        
         self._setup_image_panel()
         self._setup_text_panel()
         layout.addWidget(self._splitter)
 
         self._setup_nav_bar(layout)
+        
+        # Set cursor on handle AFTER widgets are added
+        if self._splitter.count() > 1:
+            self._splitter.handle(1).setCursor(Qt.CursorShape.SplitHCursor)
 
     def _setup_image_panel(self) -> None:
         """Left panel: zoomable graphics view for page image."""
