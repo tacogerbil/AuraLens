@@ -62,6 +62,9 @@ class PageViewer(QWidget):
         self._text_edit.setFont(QFont("monospace", 10))
         self._text_edit.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
         self._splitter.addWidget(self._text_edit)
+        
+        # Set initial 50/50 split (resizable by user)
+        self._splitter.setSizes([500, 500])
 
     def _setup_nav_bar(self, parent_layout: QVBoxLayout) -> None:
         """Bottom navigation: prev, page spinbox, total label, next."""

@@ -257,7 +257,7 @@ class MainWindow(QMainWindow):
         self._is_processing = True
         self._update_action_states()
         self._stack.setCurrentIndex(_IDX_PROCESSING)
-        self._processing_widget.set_stage("Extracting pages...")
+        self._processing_widget.set_stage("Stage 1: Extracting Pages from PDF")
 
         self._worker = ExtractionWorker(
             pdf_path=self._current_pdf_path,
@@ -269,8 +269,8 @@ class MainWindow(QMainWindow):
 
     def _on_page_extracted(self, page_num: int, total: int) -> None:
         """Update progress during extraction."""
-        self._processing_widget.set_progress(page_num, total)
-        self._set_status(f"Extracted page {page_num}/{total}")
+        self._processing_widget.update_page(page_num, total)
+        self._set_status(f"Stage 1: Extracting page {page_num}/{total} as JPEG")
 
     def _on_extraction_finished(self, cache_dir: str, total: int) -> None:
         """Extraction done — show review or auto-continue to OCR."""
@@ -311,7 +311,7 @@ class MainWindow(QMainWindow):
         skip_pages = self._orchestrator.calculate_resume_pages(output_path)
 
         self._stack.setCurrentIndex(_IDX_PROCESSING)
-        self._processing_widget.set_stage("Processing with VLM...")
+        self._processing_widget.set_stage("Stage 2: OCR Processing with VLM")
 
         self._worker = OCRWorker(
             page_paths=page_paths,
@@ -326,8 +326,8 @@ class MainWindow(QMainWindow):
 
     def _on_page_started(self, page_num: int, total: int) -> None:
         """Update progress when OCR starts a page."""
-        self._processing_widget.set_progress(page_num, total)
-        self._set_status(f"OCR page {page_num}/{total}")
+        self._processing_widget.update_page(page_num, total)
+        self._set_status(f"Stage 2: OCR processing page {page_num}/{total}")
 
     def _on_page_completed(
         self, page_num: int, total: int, text: str

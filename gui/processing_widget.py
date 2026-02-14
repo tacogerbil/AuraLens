@@ -47,6 +47,11 @@ class ProcessingWidget(QWidget):
         layout = QVBoxLayout(self)
         layout.addStretch()
 
+        # Stage indicator
+        self._stage_label = QLabel("")
+        self._stage_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        layout.addWidget(self._stage_label)
+
         self._title_label = QLabel("Ready")
         layout.addWidget(self._title_label)
 
@@ -79,6 +84,10 @@ class ProcessingWidget(QWidget):
         self._progress_bar.setValue(0)
         self._eta_label.setText("Calculating...")
         self._cancel_btn.setEnabled(True)
+
+    def set_stage(self, stage_text: str) -> None:
+        """Set the current processing stage."""
+        self._stage_label.setText(stage_text)
 
     def update_page(self, page_num: int, total: int) -> None:
         """Update progress bar, page label, and ETA."""
