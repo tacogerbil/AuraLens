@@ -65,21 +65,29 @@ class WorkflowOrchestrator:
         }
 
     def calculate_resume_pages(
-        self, output_path: Path
+        self, cache_dir: Path
     ) -> Set[int]:
         """Calculate which pages to skip during OCR resume.
 
         Args:
-            output_path: Path to output file
+            cache_dir: Cache directory containing page files
 
         Returns:
             Set of page numbers already completed
         """
-        assembler = BookAssembler()
-        completed = assembler.get_completed_pages(output_path)
+        from core.page_cache import page_text_path
+        
+        completed = set()
+        page_images = list_cached_pages(cache_dir)
+        
+        for idx, _ in enumerate(page_images, start=1):
+            text_file = page_text_path(cache_dir, idx)
+            if text_file.exists() and text_file.stat().st_size > 0:
+                completed.add(idx)
+        
         if completed:
             logger.info(
-                "Resume: skipping %d pages: %s",
+                "Resume: skipping %d pages with existing text: %s",
                 len(completed),
                 sorted(completed)
             )

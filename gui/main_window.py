@@ -305,11 +305,8 @@ class MainWindow(QMainWindow):
         """Create and start OCR worker with resume support."""
         params = self._orchestrator.get_ocr_params()
         
-        # Calculate resume pages
-        output_path = self._orchestrator.get_incremental_save_path(
-            self._current_pdf_path
-        )
-        skip_pages = self._orchestrator.calculate_resume_pages(output_path)
+        # Calculate resume pages from existing text files
+        skip_pages = self._orchestrator.calculate_resume_pages(self._cache_dir)
 
         self._stack.setCurrentIndex(_IDX_PROCESSING)
         self._processing_widget.set_stage("Stage 2: OCR Processing with VLM")

@@ -44,6 +44,18 @@ class PageViewer(QWidget):
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
         self._splitter.setHandleWidth(8)  # Make handle more visible
         self._splitter.setChildrenCollapsible(False)  # Prevent collapsing panels
+        
+        # Style the splitter handle to be visible
+        self._splitter.setStyleSheet("""
+            QSplitter::handle {
+                background-color: #cccccc;
+                border: 1px solid #999999;
+            }
+            QSplitter::handle:hover {
+                background-color: #4a90e2;
+            }
+        """)
+        
         self._setup_image_panel()
         self._setup_text_panel()
         layout.addWidget(self._splitter)
