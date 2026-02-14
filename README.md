@@ -96,5 +96,21 @@ To run the test suite (requires `pytest`):
 python -m pytest tests/
 ```
 
+## Troubleshooting
+
+### Connection Failed (Network/Remote)
+
+If you are running AuraLens (in WSL or otherwise) and connecting to OpenWebUI on **another machine** (e.g., a network laptop):
+
+1.  **Check IP Connectivity**:
+    -   Can you ping the laptop? `ping <laptop-ip>`
+2.  **Bind Address**:
+    -   Ensure OpenWebUI on the laptop is listening on **0.0.0.0** (all interfaces), not `127.0.0.1` (localhost only).
+    -   If using Docker `run`, use `-p 3000:3000`.
+3.  **Firewall**:
+    -   Check the laptop's firewall (Windows Defender or Linux UFW). Ensure **Port 3000** (or your custom port) is allowed for inbound traffic.
+4.  **WSL Networking**:
+    -   WSL2 is on its own subnet. Ensure the laptop accepts connections from the WSL subnet or your host machine's IP.
+
 ## License
 [Your License Here]

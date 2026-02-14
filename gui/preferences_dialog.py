@@ -225,10 +225,40 @@ class PreferencesDialog(QDialog):
             QMessageBox.information(
                 self, "Test Connection", "Connection successful!"
             )
-        except requests.RequestException as err:
+        except requests.Timeout:
             QMessageBox.critical(
-                self, "Test Connection", f"Connection failed:\n{err}"
+                self,
+                "Test Connection",
+                f"Connection timed out after {self._timeout.value()} seconds.\n\n"
+                "Check your network connection and Firewall settings.",
             )
+        except requests.ConnectionError:
+            QMessageBox.critical(
+                self,
+                "Test Connection",
+                "Could not connect to the server.\n\n"
+                "1. Check the API URL (IP and Port).\n"
+                "2. Ensure OpenWebUI is running.\n"
+                "3. Check if the server is reachable (Ping/Firewall).",
+            )
+        except requests.RequestException as err:
+            msg = f"Connection failed:\n{err}"
+            if err.response is not None:
+                try:
+                    data = err.response.json()
+                    # Common OpenWebUI/OpenAI error fields
+                    detail = (
+                        data.get("detail")
+                        or data.get("error", {}).get("message")
+                        or data.get("message")
+                    )
+                    if detail:
+                        msg = f"Server Error:\n{detail}"
+                except Exception:
+                    # Not JSON or parsing failed
+                    pass
+
+            QMessageBox.critical(self, "Test Connection", msg)
 
     def run(self) -> bool:
         """Show dialog modally and return True if accepted."""
