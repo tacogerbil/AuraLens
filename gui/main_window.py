@@ -69,7 +69,7 @@ class MainWindow(QMainWindow):
 
         # UI setup
         self.setWindowTitle("AuraLens")
-        self.resize(1200, 800)
+        self.setMinimumSize(800, 600)  # Set minimum size instead of fixed size
 
         self._setup_central_widget()
         self._setup_toolbar()
@@ -283,7 +283,7 @@ class MainWindow(QMainWindow):
             page_paths = self._orchestrator.get_page_paths_from_cache(
                 self._cache_dir
             )
-            self._image_review_widget.load_images(page_paths)
+            self._image_review_widget.show_ready(self._cache_dir, total)
             self._stack.setCurrentIndex(_IDX_IMAGE_REVIEW)
             self._set_status(f"Review {total} extracted images")
 
