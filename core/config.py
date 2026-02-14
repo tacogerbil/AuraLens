@@ -35,6 +35,12 @@ class Config:
     inbox_dir: str = ""
     outbox_dir: str = ""
     system_prompt: str = field(default=DEFAULT_SYSTEM_PROMPT)
+    
+    # Window geometry persistence
+    window_width: int = 1600
+    window_height: int = 1000
+    window_x: int = -1  # -1 means center on screen
+    window_y: int = -1
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize config to a plain dictionary."""

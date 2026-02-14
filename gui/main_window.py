@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
     QMessageBox,
+    QSizeGrip,
     QStackedLayout,
     QToolBar,
     QWidget,
@@ -71,14 +72,16 @@ class MainWindow(QMainWindow):
         # UI setup
         self.setWindowTitle("AuraLens")
         self.setMinimumSize(800, 600)  # Minimum size to prevent too-small window
-        self.resize(1600, 1000)  # Initial size, but user can resize
-
+        
         self._setup_central_widget()
         self._setup_toolbar()
         self._setup_status_bar()
         self._setup_inbox_monitor()
         self._connect_inbox_signals()
         self._update_action_states()
+        
+        # Restore window geometry from config
+        self._restore_window_geometry()
 
     # ── Central widget ──────────────────────────────────────────────
 
@@ -134,6 +137,10 @@ class MainWindow(QMainWindow):
         """Add persistent status label."""
         self._status_label = QLabel("Ready")
         self.statusBar().addPermanentWidget(self._status_label)
+        
+        # Add size grip for easier window resizing
+        self._size_grip = QSizeGrip(self)
+        self.statusBar().addPermanentWidget(self._size_grip)
 
     def _set_status(self, text: str) -> None:
         """Update the persistent status label."""
@@ -453,3 +460,31 @@ class MainWindow(QMainWindow):
         """Extend _page_texts list to accommodate page_num (1-indexed)."""
         while len(self._page_texts) < page_num:
             self._page_texts.append("")
+    
+    # ── Window geometry persistence ─────────────────────────────────
+    
+    def _restore_window_geometry(self) -> None:
+        """Restore window size and position from config."""
+        self.resize(self._config.window_width, self._config.window_height)
+        
+        # Position: -1 means center on screen
+        if self._config.window_x >= 0 and self._config.window_y >= 0:
+            self.move(self._config.window_x, self._config.window_y)
+        else:
+            # Center window on screen
+            from PySide6.QtGui import QGuiApplication
+            screen = QGuiApplication.primaryScreen().geometry()
+            x = (screen.width() - self._config.window_width) // 2
+            y = (screen.height() - self._config.window_height) // 2
+            self.move(max(0, x), max(0, y))
+    
+    def closeEvent(self, event) -> None:
+        """Save window geometry to config before closing."""
+        self._config.window_width = self.width()
+        self._config.window_height = self.height()
+        self._config.window_x = self.x()
+        self._config.window_y = self.y()
+        save_config(self._config)
+        logger.info("Saved window geometry: %dx%d at (%d, %d)", 
+                    self.width(), self.height(), self.x(), self.y())
+        event.accept()
