@@ -62,6 +62,26 @@ class PreferencesDialog(QDialog):
         form.addWidget(QLabel("Temperature:"))
         form.addWidget(self._temperature)
 
+        self._repeat_penalty = QDoubleSpinBox()
+        self._repeat_penalty.setRange(1.0, 2.0)
+        self._repeat_penalty.setSingleStep(0.1)
+        self._repeat_penalty.setDecimals(1)
+        self._repeat_penalty.setToolTip(
+            "Penalize repeated sequences (1.0=none, 1.2=moderate, 1.5=strong)"
+        )
+        form.addWidget(QLabel("Repeat Penalty:"))
+        form.addWidget(self._repeat_penalty)
+
+        self._presence_penalty = QDoubleSpinBox()
+        self._presence_penalty.setRange(0.0, 2.0)
+        self._presence_penalty.setSingleStep(0.1)
+        self._presence_penalty.setDecimals(1)
+        self._presence_penalty.setToolTip(
+            "Penalize already-seen tokens (0.0=none, 0.5=moderate, 1.0=strong)"
+        )
+        form.addWidget(QLabel("Presence Penalty:"))
+        form.addWidget(self._presence_penalty)
+
         self._timeout = self._add_spinbox(form, "Timeout (s):", 1, 600)
         self._max_tokens = self._add_spinbox(form, "Max Tokens:", 1, 32768)
 
@@ -167,6 +187,8 @@ class PreferencesDialog(QDialog):
         self._api_key.setText(config.api_key)
         self._model_name.setText(config.model_name)
         self._temperature.setValue(config.temperature)
+        self._repeat_penalty.setValue(config.repeat_penalty)
+        self._presence_penalty.setValue(config.presence_penalty)
         self._timeout.setValue(config.timeout)
         self._max_tokens.setValue(config.max_tokens)
         self._pdf_dpi.setValue(config.pdf_dpi)
@@ -183,6 +205,8 @@ class PreferencesDialog(QDialog):
             api_key=self._api_key.text(),
             model_name=self._model_name.text(),
             temperature=self._temperature.value(),
+            repeat_penalty=self._repeat_penalty.value(),
+            presence_penalty=self._presence_penalty.value(),
             timeout=self._timeout.value(),
             max_tokens=self._max_tokens.value(),
             pdf_dpi=self._pdf_dpi.value(),

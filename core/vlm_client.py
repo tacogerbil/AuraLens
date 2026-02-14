@@ -45,6 +45,8 @@ class VLMClient:
         timeout: int = 120,
         max_tokens: int = 4096,
         temperature: float = 0.0,
+        repeat_penalty: float = 1.0,
+        presence_penalty: float = 0.0,
     ) -> None:
         self._api_url = api_url
         self._api_key = api_key
@@ -52,6 +54,8 @@ class VLMClient:
         self._timeout = timeout
         self._max_tokens = max_tokens
         self._temperature = temperature
+        self._repeat_penalty = repeat_penalty
+        self._presence_penalty = presence_penalty
 
     def process_image(self, image_data_uri: str, prompt: str) -> str:
         """Send image + prompt to VLM, return extracted text. Retries once on transient errors."""
@@ -96,13 +100,21 @@ class VLMClient:
                 "image_url": {"url": image_data_uri},
             },
         ]
-        return {
+        payload = {
             "model": self._model_name,
             "messages": [{"role": "user", "content": content}],
             "stream": False,
             "temperature": self._temperature,
             "max_tokens": self._max_tokens,
         }
+        
+        # Add penalties only if non-default
+        if self._repeat_penalty != 1.0:
+            payload["repeat_penalty"] = self._repeat_penalty
+        if self._presence_penalty != 0.0:
+            payload["presence_penalty"] = self._presence_penalty
+        
+        return payload
 
     def _send_request(
         self, image_data_uri: str, prompt: str

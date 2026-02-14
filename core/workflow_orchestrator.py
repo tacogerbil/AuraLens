@@ -62,6 +62,8 @@ class WorkflowOrchestrator:
             "max_tokens": self._config.max_tokens,
             "temperature": self._config.temperature,
             "system_prompt": self._config.system_prompt,
+            "repeat_penalty": self._config.repeat_penalty,
+            "presence_penalty": self._config.presence_penalty,
         }
 
     def is_fully_cached(self, cache_dir: Path) -> bool:
