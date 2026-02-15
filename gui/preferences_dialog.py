@@ -168,6 +168,17 @@ class PreferencesDialog(QDialog):
         )
         group_layout.addWidget(self._enable_thinking)
 
+        self._thinking_budget = QSpinBox()
+        self._thinking_budget.setRange(1024, 16384)
+        self._thinking_budget.setValue(4096)
+        self._thinking_budget.setSingleStep(512)
+        self._thinking_budget.setToolTip(
+            "Extra tokens allocated for thinking overhead.\n"
+            "Added to Max Tokens when thinking mode is active."
+        )
+        group_layout.addWidget(QLabel("Thinking Token Budget:"))
+        group_layout.addWidget(self._thinking_budget)
+
         self._enable_multi_page = QCheckBox("Enable Multi-Page Analysis (Future)")
         self._enable_multi_page.setToolTip(
             "Compare pages, detect duplicates, analyze spreads.\n"
@@ -251,6 +262,7 @@ class PreferencesDialog(QDialog):
         model = config.model_name
         mcpm = config.minicpm_settings.get(model, {})
         self._enable_thinking.setChecked(mcpm.get("enable_thinking", False))
+        self._thinking_budget.setValue(mcpm.get("thinking_budget", 4096))
         self._enable_multi_page.setChecked(mcpm.get("enable_multi_page", False))
         self._on_model_name_changed()
 
@@ -262,6 +274,7 @@ class PreferencesDialog(QDialog):
         if "minicpm" in model_name.lower():
             minicpm_settings[model_name] = {
                 "enable_thinking": self._enable_thinking.isChecked(),
+                "thinking_budget": self._thinking_budget.value(),
                 "enable_multi_page": self._enable_multi_page.isChecked(),
             }
 

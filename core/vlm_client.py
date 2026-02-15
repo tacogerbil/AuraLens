@@ -1,6 +1,7 @@
 """VLM API client for OpenWebUI chat/completions with vision support."""
 
 import logging
+import re
 import time
 from typing import Any, Dict, List, Optional
 
@@ -10,6 +11,13 @@ logger = logging.getLogger(__name__)
 
 RETRY_BACKOFF_SECONDS = 5.0
 MAX_RETRIES = 1
+
+_THINKING_PATTERN = re.compile(r"<think>.*?</think>", re.DOTALL)
+
+
+def strip_thinking_tags(text: str) -> str:
+    """Remove <think>...</think> blocks from VLM response."""
+    return _THINKING_PATTERN.sub("", text).strip()
 
 
 # --- Exceptions ---
@@ -159,7 +167,8 @@ class VLMClient:
     def _extract_text(self, response_json: Dict[str, Any]) -> str:
         """Parse text content from OpenAI chat/completions response."""
         try:
-            return response_json["choices"][0]["message"]["content"]
+            content = response_json["choices"][0]["message"]["content"]
+            return strip_thinking_tags(content)
         except (KeyError, IndexError, TypeError) as exc:
             raise VLMError(
                 f"Unexpected response format: {list(response_json.keys())}"

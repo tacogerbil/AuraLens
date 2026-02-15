@@ -56,13 +56,18 @@ class WorkflowOrchestrator:
         """
         model_name = self._config.model_name
         enable_thinking = self._get_minicpm_thinking(model_name)
+        max_tokens = self._config.max_tokens
+
+        if enable_thinking:
+            thinking_budget = self._get_thinking_budget(model_name)
+            max_tokens += thinking_budget
 
         return {
             "api_url": self._config.api_url,
             "api_key": self._config.api_key,
             "model_name": model_name,
             "timeout": self._config.timeout,
-            "max_tokens": self._config.max_tokens,
+            "max_tokens": max_tokens,
             "temperature": self._config.temperature,
             "system_prompt": self._config.system_prompt,
             "repeat_penalty": self._config.repeat_penalty,
@@ -74,6 +79,11 @@ class WorkflowOrchestrator:
         """Check if deep thinking is enabled for this model."""
         settings = self._config.minicpm_settings.get(model_name, {})
         return settings.get("enable_thinking", False)
+
+    def _get_thinking_budget(self, model_name: str) -> int:
+        """Get thinking token budget for this model (default 4096)."""
+        settings = self._config.minicpm_settings.get(model_name, {})
+        return settings.get("thinking_budget", 4096)
 
     def is_fully_cached(self, cache_dir: Path) -> bool:
         """Check if all pages have both images and text in cache.
