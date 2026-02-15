@@ -47,6 +47,7 @@ class VLMClient:
         temperature: float = 0.0,
         repeat_penalty: float = 1.0,
         presence_penalty: float = 0.0,
+        enable_thinking: bool = False,
     ) -> None:
         self._api_url = api_url
         self._api_key = api_key
@@ -56,6 +57,7 @@ class VLMClient:
         self._temperature = temperature
         self._repeat_penalty = repeat_penalty
         self._presence_penalty = presence_penalty
+        self._enable_thinking = enable_thinking
 
     def process_image(self, image_data_uri: str, prompt: str) -> str:
         """Send image + prompt to VLM, return extracted text. Retries once on transient errors."""
@@ -113,7 +115,9 @@ class VLMClient:
             payload["repeat_penalty"] = self._repeat_penalty
         if self._presence_penalty != 0.0:
             payload["presence_penalty"] = self._presence_penalty
-        
+        if self._enable_thinking:
+            payload["enable_thinking"] = True
+
         return payload
 
     def _send_request(

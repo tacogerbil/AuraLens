@@ -29,6 +29,7 @@ class Config:
     temperature: float = 0.0
     repeat_penalty: float = 1.2  # Penalize repetition (1.0=none, >1.0=penalty)
     presence_penalty: float = 0.5  # Penalize already-seen tokens (0.0-2.0)
+    minicpm_settings: dict = field(default_factory=dict)  # Per-model MiniCPM options
     pdf_dpi: int = 150
     max_image_pixels: int = 1_003_520
     jpeg_quality: int = 90

@@ -4,10 +4,12 @@ from typing import Optional
 
 import requests
 from PySide6.QtWidgets import (
+    QCheckBox,
     QDialog,
     QDialogButtonBox,
     QDoubleSpinBox,
     QFileDialog,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -84,6 +86,8 @@ class PreferencesDialog(QDialog):
         self._timeout = self._add_spinbox(form, "Timeout (s):", 1, 600)
         self._max_tokens = self._add_spinbox(form, "Max Tokens:", 1, 32768)
 
+        self._build_minicpm_section(form)
+
         form.addStretch()
         self._tabs.addTab(tab, "API")
 
@@ -143,6 +147,52 @@ class PreferencesDialog(QDialog):
 
         parent_layout.addLayout(bar)
 
+    # ── MiniCPM section ────────────────────────────────────────────
+
+    def _build_minicpm_section(self, layout: QVBoxLayout) -> None:
+        """Add conditionally-visible MiniCPM advanced options."""
+        self._minicpm_toggle = QPushButton("MiniCPM Advanced")
+        self._minicpm_toggle.setCheckable(True)
+        self._minicpm_toggle.setVisible(False)
+        self._minicpm_toggle.clicked.connect(self._toggle_minicpm_options)
+        layout.addWidget(self._minicpm_toggle)
+
+        self._minicpm_group = QGroupBox("MiniCPM Advanced Options")
+        self._minicpm_group.setVisible(False)
+        group_layout = QVBoxLayout()
+
+        self._enable_thinking = QCheckBox("Enable Deep Thinking Mode")
+        self._enable_thinking.setToolTip(
+            "Slower but more accurate reasoning for complex pages.\n"
+            "Uses MiniCPM's deep thinking capability."
+        )
+        group_layout.addWidget(self._enable_thinking)
+
+        self._enable_multi_page = QCheckBox("Enable Multi-Page Analysis (Future)")
+        self._enable_multi_page.setToolTip(
+            "Compare pages, detect duplicates, analyze spreads.\n"
+            "Requires MiniCPM-V 4.5+"
+        )
+        self._enable_multi_page.setEnabled(False)
+        group_layout.addWidget(self._enable_multi_page)
+
+        self._minicpm_group.setLayout(group_layout)
+        layout.addWidget(self._minicpm_group)
+
+        self._model_name.textChanged.connect(self._on_model_name_changed)
+
+    def _toggle_minicpm_options(self) -> None:
+        """Show/hide MiniCPM advanced options group."""
+        self._minicpm_group.setVisible(self._minicpm_toggle.isChecked())
+
+    def _on_model_name_changed(self) -> None:
+        """Show/hide MiniCPM toggle based on model name."""
+        is_minicpm = "minicpm" in self._model_name.text().lower()
+        self._minicpm_toggle.setVisible(is_minicpm)
+        if not is_minicpm:
+            self._minicpm_toggle.setChecked(False)
+            self._minicpm_group.setVisible(False)
+
     # ── Widget helpers ──────────────────────────────────────────────
 
     @staticmethod
@@ -197,15 +247,32 @@ class PreferencesDialog(QDialog):
         self._outbox_dir.setText(config.outbox_dir)
         self._system_prompt.setPlainText(config.system_prompt)
 
+        # MiniCPM per-model settings
+        model = config.model_name
+        mcpm = config.minicpm_settings.get(model, {})
+        self._enable_thinking.setChecked(mcpm.get("enable_thinking", False))
+        self._enable_multi_page.setChecked(mcpm.get("enable_multi_page", False))
+        self._on_model_name_changed()
+
     def get_config(self) -> Config:
         """Read all widget values back into a Config dataclass."""
+        model_name = self._model_name.text()
+        minicpm_settings = dict(self._config.minicpm_settings)
+
+        if "minicpm" in model_name.lower():
+            minicpm_settings[model_name] = {
+                "enable_thinking": self._enable_thinking.isChecked(),
+                "enable_multi_page": self._enable_multi_page.isChecked(),
+            }
+
         return Config(
             api_url=self._api_url.text(),
             api_key=self._api_key.text(),
-            model_name=self._model_name.text(),
+            model_name=model_name,
             temperature=self._temperature.value(),
             repeat_penalty=self._repeat_penalty.value(),
             presence_penalty=self._presence_penalty.value(),
+            minicpm_settings=minicpm_settings,
             timeout=self._timeout.value(),
             max_tokens=self._max_tokens.value(),
             pdf_dpi=self._pdf_dpi.value(),

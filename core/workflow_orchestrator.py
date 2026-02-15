@@ -54,17 +54,26 @@ class WorkflowOrchestrator:
         Returns:
             Dictionary of OCR parameters
         """
+        model_name = self._config.model_name
+        enable_thinking = self._get_minicpm_thinking(model_name)
+
         return {
             "api_url": self._config.api_url,
             "api_key": self._config.api_key,
-            "model_name": self._config.model_name,
+            "model_name": model_name,
             "timeout": self._config.timeout,
             "max_tokens": self._config.max_tokens,
             "temperature": self._config.temperature,
             "system_prompt": self._config.system_prompt,
             "repeat_penalty": self._config.repeat_penalty,
             "presence_penalty": self._config.presence_penalty,
+            "enable_thinking": enable_thinking,
         }
+
+    def _get_minicpm_thinking(self, model_name: str) -> bool:
+        """Check if deep thinking is enabled for this model."""
+        settings = self._config.minicpm_settings.get(model_name, {})
+        return settings.get("enable_thinking", False)
 
     def is_fully_cached(self, cache_dir: Path) -> bool:
         """Check if all pages have both images and text in cache.
