@@ -252,7 +252,11 @@ class MainWindow(QMainWindow):
         old_inbox = self._config.inbox_dir
         dialog = PreferencesDialog(self._config, parent=self)
         if dialog.exec():
+            # Get updated config from dialog
+            self._config = dialog.get_config()
             save_config(self._config)
+            # Update orchestrator to use new config
+            self._orchestrator = WorkflowOrchestrator(self._config)
             self._apply_inbox_config_change(old_inbox)
 
     # ── Validation ──────────────────────────────────────────────────
