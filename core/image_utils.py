@@ -58,7 +58,7 @@ def to_base64_data_uri(jpeg_bytes: bytes) -> str:
 
 def prepare_image_for_vlm(
     image: Image.Image,
-    max_pixels: int = 1_003_520,
+    max_pixels: int = 1_806_336,  # MiniCPM-V 4.5 max (1344x1344)
     jpeg_quality: int = 90,
 ) -> str:
     """Full pipeline: resize → encode → base64 data URI."""

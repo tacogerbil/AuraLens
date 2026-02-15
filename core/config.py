@@ -31,7 +31,7 @@ class Config:
     presence_penalty: float = 0.5  # Penalize already-seen tokens (0.0-2.0)
     minicpm_settings: dict = field(default_factory=dict)  # Per-model MiniCPM options
     pdf_dpi: int = 150
-    max_image_pixels: int = 1_003_520
+    max_image_pixels: int = 1_806_336  # MiniCPM-V 4.5 max (1344x1344)
     jpeg_quality: int = 90
     timeout: int = 120
     max_tokens: int = 4096
