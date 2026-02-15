@@ -1,12 +1,13 @@
 """Retro-style scanning progress overlay widget."""
 
+import time
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import QWidget
 
 
 class ScanningOverlay(QWidget):
-    """Retro-style 'SCANNING...' progress overlay with pulsing bar."""
+    """Retro-style 'SCANNING...' progress overlay with time-based fill."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -14,17 +15,18 @@ class ScanningOverlay(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         
         self._progress = 0.0  # 0.0 to 1.0
-        self._direction = 1  # 1 = growing, -1 = shrinking
+        self._start_time = 0.0
+        self._estimated_duration = 30.0  # Estimate 30 seconds per page
         self._timer = QTimer(self)
-        self._timer.timeout.connect(self._pulse)
-        self._timer.setInterval(30)  # ~33 FPS for smooth pulsing
+        self._timer.timeout.connect(self._update_progress)
+        self._timer.setInterval(100)  # Update every 100ms
         
         self.hide()
 
     def start(self) -> None:
-        """Show overlay and start pulsing animation."""
+        """Show overlay and start progress fill."""
         self._progress = 0.0
-        self._direction = 1
+        self._start_time = time.time()
         self.show()
         self.raise_()
         self._timer.start()
@@ -34,18 +36,10 @@ class ScanningOverlay(QWidget):
         self._timer.stop()
         self.hide()
 
-    def _pulse(self) -> None:
-        """Pulse progress bar back and forth (indeterminate state)."""
-        self._progress += 0.015 * self._direction  # 1.5% per frame
-        
-        # Reverse direction at boundaries
-        if self._progress >= 1.0:
-            self._progress = 1.0
-            self._direction = -1
-        elif self._progress <= 0.0:
-            self._progress = 0.0
-            self._direction = 1
-        
+    def _update_progress(self) -> None:
+        """Update progress based on elapsed time."""
+        elapsed = time.time() - self._start_time
+        self._progress = min(elapsed / self._estimated_duration, 0.95)  # Cap at 95% until actually done
         self.update()
 
     def paintEvent(self, event) -> None:
