@@ -95,6 +95,7 @@ class MainWindow(QMainWindow):
         self._stack.addWidget(self._placeholder)
 
         self._processing_widget = ProcessingWidget()
+        self._processing_widget.cancel_requested.connect(self._on_cancel_processing)
         self._stack.addWidget(self._processing_widget)
 
         self._image_review_widget = ImageReviewWidget()
@@ -342,6 +343,13 @@ class MainWindow(QMainWindow):
             self._image_review_widget.show_ready(self._cache_dir, total)
             self._stack.setCurrentIndex(_IDX_IMAGE_REVIEW)
             self._set_status(f"Review {total} extracted images")
+
+    def _on_cancel_processing(self) -> None:
+        """Cancel the current worker (extraction or OCR)."""
+        if self._worker:
+            logger.info("User requested cancellation")
+            self._worker.cancel()
+            self._set_status("Cancelling...")
 
     # ── OCR stage ───────────────────────────────────────────────────
 
