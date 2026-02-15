@@ -97,6 +97,8 @@ class OCRWorker(QThread):
         max_tokens: int,
         temperature: float,
         system_prompt: str,
+        repeat_penalty: float = 1.0,
+        presence_penalty: float = 0.0,
         skip_pages: Set[int] = None,
     ) -> None:
         super().__init__()
@@ -108,6 +110,8 @@ class OCRWorker(QThread):
         self._max_tokens = max_tokens
         self._temperature = temperature
         self._system_prompt = system_prompt
+        self._repeat_penalty = repeat_penalty
+        self._presence_penalty = presence_penalty
         self._skip_pages = skip_pages or set()
         self._cancelled = False
 
@@ -124,6 +128,8 @@ class OCRWorker(QThread):
             timeout=self._timeout,
             max_tokens=self._max_tokens,
             temperature=self._temperature,
+            repeat_penalty=self._repeat_penalty,
+            presence_penalty=self._presence_penalty,
         )
 
         try:
