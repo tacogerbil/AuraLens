@@ -66,6 +66,11 @@ class PageViewer(QWidget):
         # Set cursor on handle AFTER widgets are added
         if self._splitter.count() > 1:
             self._splitter.handle(1).setCursor(Qt.CursorShape.SplitHCursor)
+        
+        # Add scanning overlay (initially hidden)
+        from gui.scanning_overlay import ScanningOverlay
+        self._scanning_overlay = ScanningOverlay(self)
+        self._scanning_overlay.hide()
 
     def _setup_image_panel(self) -> None:
         """Left panel: zoomable graphics view for page image."""
@@ -143,6 +148,20 @@ class PageViewer(QWidget):
     def current_page(self) -> int:
         """Return 1-indexed current page number."""
         return self._current_page
+
+    def show_scanning(self) -> None:
+        """Show scanning progress overlay."""
+        self._scanning_overlay.start()
+
+    def hide_scanning(self) -> None:
+        """Hide scanning progress overlay."""
+        self._scanning_overlay.stop()
+
+    def resizeEvent(self, event) -> None:
+        """Keep overlay sized with widget."""
+        super().resizeEvent(event)
+        if hasattr(self, '_scanning_overlay'):
+            self._scanning_overlay.setGeometry(self.rect())
 
     # ── Navigation ──────────────────────────────────────────────────
 

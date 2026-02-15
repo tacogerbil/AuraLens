@@ -459,6 +459,9 @@ class MainWindow(QMainWindow):
         self._is_processing = True
         self._set_status(f"Re-scanning page {page_num}...")
         self._update_action_states()
+        
+        # Show scanning overlay
+        self._page_viewer.show_scanning()
 
         self._worker = OCRWorker(
             page_paths=[target_path],
@@ -477,6 +480,9 @@ class MainWindow(QMainWindow):
         """Handle new text from re-scan."""
         logger.info("Re-scan finished for page %d", page_num)
         
+        # Hide scanning overlay
+        self._page_viewer.hide_scanning()
+        
         # Save to individual page file
         save_page_text(self._cache_dir, page_num, text)
         
@@ -493,6 +499,9 @@ class MainWindow(QMainWindow):
 
     def _on_re_scan_finished(self) -> None:
         """Cleanup after re-scan."""
+        # Hide scanning overlay (in case of error)
+        self._page_viewer.hide_scanning()
+        
         self._is_processing = False
         self._worker = None
         self._update_action_states()

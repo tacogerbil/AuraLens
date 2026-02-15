@@ -52,7 +52,6 @@ class PreferencesDialog(QDialog):
 
         self._api_url = self._add_line_edit(form, "API URL:")
         self._api_key = self._add_line_edit(form, "API Key:")
-        self._api_key.setEchoMode(QLineEdit.EchoMode.Password)
         self._model_name = self._add_line_edit(form, "Model Name:")
 
         self._temperature = QDoubleSpinBox()
