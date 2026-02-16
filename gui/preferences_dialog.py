@@ -58,15 +58,15 @@ class PreferencesDialog(QDialog):
 
         self._temperature = QDoubleSpinBox()
         self._temperature.setRange(0.0, 2.0)
-        self._temperature.setSingleStep(0.1)
-        self._temperature.setDecimals(1)
+        self._temperature.setSingleStep(0.05)
+        self._temperature.setDecimals(2)
         form.addWidget(QLabel("Temperature:"))
         form.addWidget(self._temperature)
 
         self._repeat_penalty = QDoubleSpinBox()
         self._repeat_penalty.setRange(1.0, 2.0)
-        self._repeat_penalty.setSingleStep(0.1)
-        self._repeat_penalty.setDecimals(1)
+        self._repeat_penalty.setSingleStep(0.05)
+        self._repeat_penalty.setDecimals(2)
         self._repeat_penalty.setToolTip(
             "Penalize repeated sequences (1.0=none, 1.2=moderate, 1.5=strong)"
         )
@@ -75,8 +75,8 @@ class PreferencesDialog(QDialog):
 
         self._presence_penalty = QDoubleSpinBox()
         self._presence_penalty.setRange(0.0, 2.0)
-        self._presence_penalty.setSingleStep(0.1)
-        self._presence_penalty.setDecimals(1)
+        self._presence_penalty.setSingleStep(0.05)
+        self._presence_penalty.setDecimals(2)
         self._presence_penalty.setToolTip(
             "Penalize already-seen tokens (0.0=none, 0.5=moderate, 1.0=strong)"
         )
