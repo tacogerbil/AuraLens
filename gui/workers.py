@@ -97,6 +97,7 @@ class OCRWorker(QThread):
         max_tokens: int,
         temperature: float,
         system_prompt: str,
+        user_prompt: str,
         repeat_penalty: float = 1.0,
         presence_penalty: float = 0.0,
         enable_thinking: bool = False,
@@ -111,6 +112,7 @@ class OCRWorker(QThread):
         self._max_tokens = max_tokens
         self._temperature = temperature
         self._system_prompt = system_prompt
+        self._user_prompt = user_prompt
         self._repeat_penalty = repeat_penalty
         self._presence_penalty = presence_penalty
         self._enable_thinking = enable_thinking
@@ -169,4 +171,8 @@ class OCRWorker(QThread):
         """Read JPEG from disk, convert to data URI, send to VLM."""
         jpeg_bytes = page_path.read_bytes()
         data_uri = to_base64_data_uri(jpeg_bytes)
-        return client.process_image(data_uri, self._system_prompt)
+        return client.process_image(
+            data_uri,
+            user_prompt=self._user_prompt,
+            system_prompt=self._system_prompt,
+        )

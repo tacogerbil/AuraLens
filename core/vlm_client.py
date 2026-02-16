@@ -67,13 +67,37 @@ class VLMClient:
         self._presence_penalty = presence_penalty
         self._enable_thinking = enable_thinking
 
-    def process_image(self, image_data_uri: str, prompt: str) -> str:
-        """Send image + prompt to VLM, return extracted text. Retries once on transient errors."""
+    def process_image(
+        self,
+        image_data_uri: str,
+        user_prompt: str,
+        system_prompt: Optional[str] = None,
+    ) -> str:
+        """Send image + prompts to VLM, return extracted text.
+
+        Stateless: Constructs a fresh messages array for every request.
+        
+        Args:
+            image_data_uri: Base64 data URI of the image.
+            user_prompt: Specific instruction for this image (User role).
+            system_prompt: Optional global instruction (System role).
+
+        Returns:
+            Extracted text content.
+        
+        Raises:
+            VLMAuthError: On 401/403.
+            VLMModelNotFoundError: On 404.
+            VLMTimeoutError: If retries exhausted.
+            VLMError: On other failures.
+        """
         last_error: Optional[Exception] = None
 
         for attempt in range(1 + MAX_RETRIES):
             try:
-                response_json = self._send_request(image_data_uri, prompt)
+                response_json = self._send_request(
+                    image_data_uri, user_prompt, system_prompt
+                )
                 return self._extract_text(response_json)
             except (VLMAuthError, VLMModelNotFoundError):
                 raise
@@ -100,19 +124,36 @@ class VLMClient:
         return headers
 
     def _build_payload(
-        self, image_data_uri: str, prompt: str
+        self,
+        image_data_uri: str,
+        user_prompt: str,
+        system_prompt: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Construct OpenAI-compatible multimodal chat payload."""
+        """Construct OpenAI-compatible multimodal chat payload.
+        
+        Structure:
+        - System message (optional)
+        - User message (text + image)
+        """
+        messages: List[Dict[str, Any]] = []
+
+        # 1. System Message (Optional)
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+
+        # 2. User Message (Text + Image)
         content: List[Dict[str, Any]] = [
-            {"type": "text", "text": prompt},
+            {"type": "text", "text": user_prompt},
             {
                 "type": "image_url",
                 "image_url": {"url": image_data_uri},
             },
         ]
+        messages.append({"role": "user", "content": content})
+
         payload = {
             "model": self._model_name,
-            "messages": [{"role": "user", "content": content}],
+            "messages": messages,
             "stream": False,
             "temperature": self._temperature,
             "max_tokens": self._max_tokens,
@@ -129,11 +170,14 @@ class VLMClient:
         return payload
 
     def _send_request(
-        self, image_data_uri: str, prompt: str
+        self,
+        image_data_uri: str,
+        user_prompt: str,
+        system_prompt: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Execute HTTP POST to VLM API. Raises typed exceptions on failure."""
         headers = self._build_headers()
-        payload = self._build_payload(image_data_uri, prompt)
+        payload = self._build_payload(image_data_uri, user_prompt, system_prompt)
 
         try:
             response = requests.post(

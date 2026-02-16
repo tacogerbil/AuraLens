@@ -70,6 +70,7 @@ class WorkflowOrchestrator:
             "max_tokens": max_tokens,
             "temperature": self._config.temperature,
             "system_prompt": self._config.system_prompt,
+            "user_prompt": "Extract text from this image.",  # Fixed instruction for image
             "repeat_penalty": self._config.repeat_penalty,
             "presence_penalty": self._config.presence_penalty,
             "enable_thinking": enable_thinking,
