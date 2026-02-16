@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from gui.markdown_highlighter import MarkdownHighlighter
 from gui.zoomable_view import ZoomableGraphicsView
 
 
@@ -85,6 +86,10 @@ class PageViewer(QWidget):
         self._text_edit = QPlainTextEdit()
         self._text_edit.setFont(QFont("monospace", 12))
         self._text_edit.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
+        
+        # Apply Markdown syntax highlighting
+        self._highlighter = MarkdownHighlighter(self._text_edit.document())
+        
         self._splitter.addWidget(self._text_edit)
         
         # Set initial 50/50 split (resizable by user)
