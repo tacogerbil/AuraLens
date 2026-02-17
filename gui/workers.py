@@ -144,10 +144,18 @@ class OCRWorker(QThread):
 
     def _process_pages(self, client: VLMClient) -> None:
         """Core loop — read image from disk, send to VLM."""
+        from core.page_cache import get_page_number
+
         total = len(self._page_paths)
 
         for idx, page_path in enumerate(self._page_paths):
-            page_num = idx + 1
+            # Trust the filename for the page number
+            page_num = get_page_number(page_path.name)
+            if page_num == -1:
+                # Fallback if filename parsing fails (unlikely)
+                page_num = idx + 1
+                logger.warning("Could not parse page number from %s, using index %d", page_path.name, page_num)
+
             if self._cancelled:
                 logger.info("OCR cancelled at page %d", page_num)
                 break

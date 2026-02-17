@@ -96,16 +96,21 @@ class WorkflowOrchestrator:
             True if cache is complete (all pages have images and text),
             False otherwise (empty cache, missing images, or missing text)
         """
-        from core.page_cache import page_text_path
+        from core.page_cache import page_text_path, get_page_number
         
         page_images = list_cached_pages(cache_dir)
         if not page_images:
             return False
         
         # Verify all pages have corresponding text files
-        for idx, _ in enumerate(page_images, start=1):
-            text_file = page_text_path(cache_dir, idx)
-            if not text_file.exists() or text_file.stat().st_size == 0:
+        for image_path in page_images:
+            page_num = get_page_number(image_path.name)
+            if page_num == -1:
+                continue
+                
+            text_file = page_text_path(cache_dir, page_num)
+            # Relaxed check: if text file exists (even if empty), it's considered valid
+            if not text_file.exists():
                 return False
         
         logger.info(
@@ -137,7 +142,7 @@ class WorkflowOrchestrator:
                 continue
                 
             text_file = page_text_path(cache_dir, page_num)
-            if text_file.exists() and text_file.stat().st_size > 0:
+            if text_file.exists():
                 completed.add(page_num)
         
         if completed:
