@@ -7,6 +7,9 @@ from typing import Tuple
 
 from PIL import Image
 
+# Disable DecompressionBombWarning for large images
+Image.MAX_IMAGE_PIXELS = None
+
 
 def calculate_scale_factor(
     width: int, height: int, max_pixels: int
