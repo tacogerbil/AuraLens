@@ -126,15 +126,19 @@ class WorkflowOrchestrator:
         Returns:
             Set of page numbers already completed
         """
-        from core.page_cache import page_text_path
+        from core.page_cache import page_text_path, get_page_number
         
         completed = set()
         page_images = list_cached_pages(cache_dir)
         
-        for idx, _ in enumerate(page_images, start=1):
-            text_file = page_text_path(cache_dir, idx)
+        for image_path in page_images:
+            page_num = get_page_number(image_path.name)
+            if page_num == -1:
+                continue
+                
+            text_file = page_text_path(cache_dir, page_num)
             if text_file.exists() and text_file.stat().st_size > 0:
-                completed.add(idx)
+                completed.add(page_num)
         
         if completed:
             logger.info(

@@ -210,12 +210,15 @@ class VLMClient:
 
     def _extract_text(self, response_json: Dict[str, Any]) -> str:
         """Parse text content from OpenAI chat/completions response."""
+        if response_json is None:
+            raise VLMError("Received empty (None) response from VLM API")
+
         try:
             content = response_json["choices"][0]["message"]["content"]
             return strip_thinking_tags(content)
         except (KeyError, IndexError, TypeError) as exc:
             raise VLMError(
-                f"Unexpected response format: {list(response_json.keys())}"
+                f"Unexpected response format: {response_json}"
             ) from exc
 
     @staticmethod

@@ -19,6 +19,14 @@ def cache_dir_for_pdf(pdf_path: Path) -> Path:
     return _CACHE_ROOT / pdf_path.stem
 
 
+def get_page_number(filename: str) -> int:
+    """Extract page number from page_NNN.jpg filename. Returns -1 if no match."""
+    match = _PAGE_PATTERN.match(filename)
+    if match:
+        return int(match.group(1))
+    return -1
+
+
 def page_image_path(cache_dir: Path, page_num: int) -> Path:
     """Return path for page_NNN.jpg (1-indexed, zero-padded to 3 digits)."""
     return cache_dir / f"page_{page_num:03d}.jpg"
