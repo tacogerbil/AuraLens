@@ -203,7 +203,7 @@ class MainWindow(QMainWindow):
         self._action_process.setEnabled(has_pdf and not self._is_processing)
         self._action_save.setEnabled(has_pages and not self._is_processing)
         self._action_settings.setEnabled(not self._is_processing)
-        self._action_test_prompt.setEnabled(has_cache and not self._is_processing)
+        self._action_test_prompt.setEnabled(bool(has_cache and not self._is_processing))
 
     # ── User actions ────────────────────────────────────────────────
 
