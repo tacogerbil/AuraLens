@@ -66,8 +66,21 @@ class ThemeManager:
         palette = QPalette()
         
         # Helper to set color
-        def set_col(role, hex_code):
-            palette.setColor(role, QColor(hex_code))
+        def set_col(arg1, arg2, arg3=None):
+            """
+            Set palette color.
+            Usage:
+                set_col(role, hex_code)
+                set_col(group, role, hex_code)
+            """
+            if arg3 is None:
+                # overload: role, hex_code
+                role, hex_code = arg1, arg2
+                palette.setColor(role, QColor(hex_code))
+            else:
+                # overload: group, role, hex_code
+                group, role, hex_code = arg1, arg2, arg3
+                palette.setColor(group, role, QColor(hex_code))
 
         # Standard Palette Mapping
         set_col(QPalette.ColorRole.Window, colors.window)
