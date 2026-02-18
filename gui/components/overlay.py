@@ -17,7 +17,7 @@ class DimmerOverlay(QWidget):
         # Determine background color based on theme eventually, but black semi-transparent is standard.
         self.setAutoFillBackground(True)
         pal = self.palette()
-        pal.setColor(QPalette.ColorRole.Window, QColor(0, 0, 0, 100)) # 40% opacity black
+        pal.setColor(QPalette.ColorRole.Window, QColor(0, 0, 0, 180)) # 70% opacity black for strong contrast
         self.setPalette(pal)
         
     def show_dimmer(self):

@@ -133,6 +133,18 @@ class ThemeManager:
         QMainWindow {{
             background-color: {colors.window};
         }}
+        /* Dialog Customization */
+        QFileDialog {{
+            background-color: {colors.surface_container};
+            border: 2px solid {colors.highlight}; /* Strong blue border */
+            border-radius: 8px;
+        }}
+        QDialog {{
+            background-color: {colors.surface_container};
+            border: 2px solid {colors.highlight}; /* Strong blue border */
+            border-radius: 8px;
+        }}
+        /* Ensure ListView/TreeView in FileDialog is visible */
         QWidget {{
             background-color: {colors.window};
             color: {colors.text};
