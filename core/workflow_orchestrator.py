@@ -76,6 +76,40 @@ class WorkflowOrchestrator:
             "enable_thinking": enable_thinking,
         }
 
+    def create_vlm_client(self, overrides: dict = None) -> "VLMClient":
+        """Create a configured VLMClient instance.
+
+        Args:
+            overrides: Optional dictionary of parameters to override defaults.
+                       Useful for testing prompts without changing global config.
+
+        Returns:
+            Configured VLMClient instance.
+        """
+        from core.vlm_client import VLMClient
+
+        params = self.get_ocr_params()
+        if overrides:
+            params.update(overrides)
+
+        # Remove 'system_prompt' and 'user_prompt' from init params
+        # as VLMClient.__init__ doesn't take them (they go to process_image)
+        # BUT get_ocr_params returns them.
+        # We need to filter them out for __init__, OR update VLMClient to take them?
+        # VLMClient __init__ signature:
+        # (api_url, api_key, model_name, timeout, max_tokens, temperature, repeat_penalty, presence_penalty, enable_thinking)
+        # It does NOT take prompts in init.
+        
+        init_params = {
+            k: v for k, v in params.items()
+            if k in [
+                "api_url", "api_key", "model_name", "timeout", "max_tokens",
+                "temperature", "repeat_penalty", "presence_penalty", "enable_thinking"
+            ]
+        }
+        
+        return VLMClient(**init_params)
+
     def _get_minicpm_thinking(self, model_name: str) -> bool:
         """Check if deep thinking is enabled for this model."""
         settings = self._config.minicpm_settings.get(model_name, {})

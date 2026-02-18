@@ -150,28 +150,18 @@ class PromptTester(QDialog):
 
     def _execute_vlm(self, page_path: Path, system_prompt: str, user_prompt: str) -> None:
         """Execute VLM call."""
+        from core.image_utils import to_base64_data_uri
+        
         try:
-            # Create a temporary client with current config but overridden prompts via method call
-            client = VLMClient(
-                api_url=self._config.api_url,
-                api_key=self._config.api_key,
-                model_name=self._config.model_name,
-                timeout=self._config.timeout,
-            )
-            
-            # Determine max tokens
-            max_tokens = self._config.max_tokens
-            if self._orchestrator._get_minicpm_thinking(self._config.model_name):
-                 max_tokens += self._orchestrator._get_thinking_budget(self._config.model_name)
+            # Create client using centralized logic (MCCC: DRY)
+            client = self._orchestrator.create_vlm_client()
 
+            data_uri = to_base64_data_uri(page_path)
+            
             text = client.process_image(
-                image_path=page_path,
+                image_data_uri=data_uri,
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
-                temperature=self._config.temperature,
-                max_tokens=max_tokens,
-                repeat_penalty=self._config.repeat_penalty,
-                presence_penalty=self._config.presence_penalty
             )
             self._output_edit.setPlainText(text)
             
