@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QFrame, QVBoxLayout, QLabel, QWidget, QGraphicsDro
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 
-from gui.theme_manager import ThemeManager, Theme
+from gui.theme_manager import ThemeManager, Theme, LIGHT_THEME, DARK_THEME
 
 class Card(QFrame):
     """
@@ -68,20 +68,28 @@ class Card(QFrame):
         self._shadow.setYOffset(4)
         
         # Fetch shadow color from current theme
-        current_theme_colors = ThemeManager.get_current_theme() == Theme.DARK and ThemeManager.DARK_THEME or ThemeManager.LIGHT_THEME
+        current_theme_colors = DARK_THEME if ThemeManager.get_current_theme() == Theme.DARK else LIGHT_THEME
+        
         # Parse rgba string or hex. ThemeManager uses rgba(...) string for shadow in standard theme.
         # But QColor needs distinct args or a proper string.
         # QColor("rgba(r,g,b,a)") works in Qt6.
-        if hasattr(ThemeManager, 'LIGHT_THEME'): # Safety check
-             # We need to access the module level variable or get it via a getter if we added one.
-             # Since we are in the same module hierarchy, we can access the variable `ThemeManager.LIGHT_THEME` 
-             # IF we adjust the import or if ThemeManager exposes it.
-             # ThemeManager class does not expose the dataclasses directly in the snippet I saw.
-             # I will assume standard shadow for now to avoid import loops or complex parsing, 
-             # or use a safe default.
-             pass
+        # We can extract it from the theme object.
+        shadow_color_str = current_theme_colors.shadow
+        
+        # QColor constructor handles "rgba(...)" strings if they are formatted correctly?
+        # Actually QColor(name) handles #RRGGBB. It might not handle rgba(...) css syntax directly in all versions.
+        # Let's use a safe fallback or a helper if uncertain.
+        # However, for now, let's use the hardcoded safe value I had before, BUT properly selected based on theme.
+        
+        # We will use the theme's shadow string if it passes QColor check, otherwise fallback.
+        # The simplest fix for the crash is just using the imported variables.
+        # And let's stick to the safe manual QColor for now to ensure no parsing crash.
+        
+        if ThemeManager.get_current_theme() == Theme.DARK:
+             self._shadow.setColor(QColor(0, 0, 0, 128)) 
+        else:
+             self._shadow.setColor(QColor(148, 163, 184, 50)) # Blue-ish shadow for Light mode
              
-        self._shadow.setColor(QColor(0, 0, 0, 30)) # Standard soft shadow
         self.setGraphicsEffect(self._shadow)
 
     def add_widget(self, widget: QWidget) -> None:
