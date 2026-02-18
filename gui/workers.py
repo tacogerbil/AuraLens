@@ -144,8 +144,6 @@ class OCRWorker(QThread):
 
     def _process_pages(self, client: VLMClient) -> None:
         """Core loop — read image from disk, send to VLM."""
-        from core.page_cache import get_page_number
-
         total = len(self._page_paths)
 
         for idx, page_path in enumerate(self._page_paths):
@@ -164,8 +162,10 @@ class OCRWorker(QThread):
 
             if page_num in self._skip_pages:
                 logger.info("Skipping OCR for page %d (already done)", page_num)
-                # Emit empty/placeholder text so UI progresses
-                self.page_completed.emit(page_num, total, "")
+                # FIX: Load existing text so we don't overwrite it with empty string
+                # page_path is full path to image, we need cache dir (parent)
+                existing_text = load_page_text(page_path.parent, page_num)
+                self.page_completed.emit(page_num, total, existing_text)
                 continue
 
             try:

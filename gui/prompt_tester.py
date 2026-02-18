@@ -1,0 +1,180 @@
+"""Prompt Tester Dialog for testing OCR prompts on single pages."""
+
+import logging
+from pathlib import Path
+from typing import Optional
+
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QAction, QPixmap
+from PySide6.QtWidgets import (
+    QDialog,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QSpinBox,
+    QSplitter,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+    QGroupBox,
+)
+
+from core.config import Config
+from core.vlm_client import VLMClient, VLMError
+
+logger = logging.getLogger(__name__)
+
+
+class PromptTester(QDialog):
+    """Dialog to test system/user prompts on specific pages."""
+
+    def __init__(self, config: Config, cache_dir: Path, parent: Optional[QWidget] = None) -> None:
+        super().__init__(parent)
+        self._config = config
+        self._cache_dir = cache_dir
+        
+        from core.workflow_orchestrator import WorkflowOrchestrator
+        self._orchestrator = WorkflowOrchestrator(config)
+        self._page_paths = self._orchestrator.get_page_paths_from_cache(cache_dir)
+        
+        self.setWindowTitle("Prompt Tester")
+        self.resize(1200, 800)
+        
+        self._setup_ui()
+        self._load_page(1)  # Load first page by default
+
+    def _setup_ui(self) -> None:
+        """Create the UI layout."""
+        layout = QHBoxLayout(self)
+        
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        layout.addWidget(splitter)
+        
+        # Left: Image Viewer
+        self._image_label = QLabel()
+        self._image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._image_label.setStyleSheet("background-color: #f0f0f0;")
+        
+        scroll_area = QScrollArea()
+        scroll_area.setWidget(self._image_label)
+        scroll_area.setWidgetResizable(True)
+        splitter.addWidget(scroll_area)
+        
+        # Right: Controls & Output
+        right_panel = QWidget()
+        right_layout = QVBoxLayout(right_panel)
+        
+        # Page Selection
+        page_layout = QHBoxLayout()
+        page_layout.addWidget(QLabel("Page:"))
+        self._page_spin = QSpinBox()
+        self._page_spin.setRange(1, len(self._page_paths))
+        self._page_spin.valueChanged.connect(self._load_page)
+        page_layout.addWidget(self._page_spin)
+        page_layout.addStretch()
+        right_layout.addLayout(page_layout)
+        
+        # Prompts
+        prompts_group = QGroupBox("Prompts")
+        prompts_layout = QVBoxLayout(prompts_group)
+        
+        prompts_layout.addWidget(QLabel("System Prompt:"))
+        self._system_prompt_edit = QTextEdit()
+        self._system_prompt_edit.setPlainText(self._config.system_prompt)
+        self._system_prompt_edit.setMaximumHeight(100)
+        prompts_layout.addWidget(self._system_prompt_edit)
+        
+        prompts_layout.addWidget(QLabel("User Prompt:"))
+        self._user_prompt_edit = QTextEdit()
+        # Default user prompt is hardcoded in specific workers usually, but we can default it here
+        self._user_prompt_edit.setPlainText("Extract text from this image.") 
+        self._user_prompt_edit.setMaximumHeight(60)
+        prompts_layout.addWidget(self._user_prompt_edit)
+        
+        right_layout.addWidget(prompts_group)
+        
+        # Action Buttons
+        btn_layout = QHBoxLayout()
+        self._run_btn = QPushButton("Run Test")
+        self._run_btn.clicked.connect(self._run_test)
+        btn_layout.addWidget(self._run_btn)
+        right_layout.addLayout(btn_layout)
+        
+        # Output
+        output_group = QGroupBox("Output")
+        output_layout = QVBoxLayout(output_group)
+        self._output_edit = QTextEdit()
+        self._output_edit.setReadOnly(True)
+        output_layout.addWidget(self._output_edit)
+        right_layout.addWidget(output_group)
+        
+        splitter.addWidget(right_panel)
+        splitter.setSizes([600, 400])
+
+    def _load_page(self, page_num: int) -> None:
+        """Load the image for the selected page."""
+        if not self._page_paths:
+            return
+            
+        path = self._page_paths[page_num - 1]
+        pixmap = QPixmap(str(path))
+        if not pixmap.isNull():
+            # Scale to fit width references if needed, but allow scroll
+            self._image_label.setPixmap(pixmap)
+            self._image_label.adjustSize()
+        else:
+            self._image_label.setText("Failed to load image")
+
+    def _run_test(self) -> None:
+        """Run single-page OCR with current prompts."""
+        page_num = self._page_spin.value()
+        page_path = self._page_paths[page_num - 1]
+        
+        system_prompt = self._system_prompt_edit.toPlainText()
+        user_prompt = self._user_prompt_edit.toPlainText()
+        
+        self._output_edit.setPlainText("Running...")
+        self._run_btn.setEnabled(False)
+        self.repaint()  # Force UI update
+        
+        # Run in a separate loop/thread ideally, but for a simple test dialog check
+        # we'll try direct execution carefully, or use QTimer to unblock generic UI return
+        # But VLMClient is synchronous requests. 
+        # For responsiveness, we should use a worker, but since this is a "Test" dialog,
+        # slight freeze is acceptable, OR we can process events.
+        
+        QTimer.singleShot(100, lambda: self._execute_vlm(page_path, system_prompt, user_prompt))
+
+    def _execute_vlm(self, page_path: Path, system_prompt: str, user_prompt: str) -> None:
+        """Execute VLM call."""
+        try:
+            # Create a temporary client with current config but overridden prompts via method call
+            client = VLMClient(
+                api_url=self._config.api_url,
+                api_key=self._config.api_key,
+                model_name=self._config.model_name,
+                timeout=self._config.timeout,
+            )
+            
+            # Determine max tokens
+            max_tokens = self._config.max_tokens
+            if self._orchestrator._get_minicpm_thinking(self._config.model_name):
+                 max_tokens += self._orchestrator._get_thinking_budget(self._config.model_name)
+
+            text = client.process_image(
+                image_path=page_path,
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                temperature=self._config.temperature,
+                max_tokens=max_tokens,
+                repeat_penalty=self._config.repeat_penalty,
+                presence_penalty=self._config.presence_penalty
+            )
+            self._output_edit.setPlainText(text)
+            
+        except Exception as e:
+            self._output_edit.setPlainText(f"Error: {e}")
+        finally:
+            self._run_btn.setEnabled(True)

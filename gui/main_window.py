@@ -30,6 +30,7 @@ from gui.inbox_monitor import InboxMonitor
 from gui.page_viewer import PageViewer
 from gui.preferences_dialog import PreferencesDialog
 from gui.processing_widget import ProcessingWidget
+from gui.prompt_tester import PromptTester
 from gui.save_manager import SaveManager
 from gui.workers import ExtractionWorker, OCRWorker
 
@@ -127,6 +128,9 @@ class MainWindow(QMainWindow):
         self._action_save = toolbar.addAction("Save Book")
         self._action_save.triggered.connect(self._on_save_book)
 
+        self._action_test_prompt = toolbar.addAction("Test Prompt")
+        self._action_test_prompt.triggered.connect(self._on_test_prompt)
+
         toolbar.addSeparator()
 
         self._action_settings = toolbar.addAction("Settings")
@@ -188,18 +192,28 @@ class MainWindow(QMainWindow):
         self._start_extraction()
 
     # ── Action state management ─────────────────────────────────────
-
+    
     def _update_action_states(self) -> None:
         """Enable/disable toolbar actions based on current state."""
         has_pdf = self._current_pdf_path is not None
         has_pages = len(self._page_texts) > 0
+        has_cache = self._cache_dir and self._cache_dir.exists()
 
         self._action_open.setEnabled(not self._is_processing)
         self._action_process.setEnabled(has_pdf and not self._is_processing)
         self._action_save.setEnabled(has_pages and not self._is_processing)
         self._action_settings.setEnabled(not self._is_processing)
+        self._action_test_prompt.setEnabled(has_cache and not self._is_processing)
 
     # ── User actions ────────────────────────────────────────────────
+
+    def _on_test_prompt(self) -> None:
+        """Open the Prompt Tester dialog."""
+        if not self._cache_dir or not self._cache_dir.exists():
+            return
+            
+        dialog = PromptTester(self._config, self._cache_dir, parent=self)
+        dialog.exec()
 
     def _on_open_pdf(self) -> None:
         """Open a file dialog to select a PDF."""
