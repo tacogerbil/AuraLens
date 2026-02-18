@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QFrame
 )
 
+from gui.components.card import Card
 from gui.markdown_highlighter import MarkdownHighlighter
 from gui.zoomable_view import ZoomableGraphicsView
 
@@ -47,100 +48,76 @@ class SplitProcessingView(QWidget):
 
         # Splitter Area
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
-        self._splitter.setHandleWidth(4) # Thinner, modern handle
+        self._splitter.setHandleWidth(8) # Visible/Graspable handle
         self._splitter.setChildrenCollapsible(False)
         
-        # Left Panel (Image)
-        left_panel = QFrame()
-        left_panel.setFrameShape(QFrame.Shape.StyledPanel)
-        left_panel.setStyleSheet("background-color: palette(base); border: 1px solid palette(mid); border-radius: 8px;")
-        left_layout = QVBoxLayout(left_panel)
-        left_layout.setContentsMargins(10, 10, 10, 10)
+        # -- Left Panel (Preview) Wrapped in Card --
+        self._preview_card = Card(title="PDF Page Preview")
         
-        # Header
-        left_header = QLabel("PDF Page Preview")
-        left_header.setStyleSheet("font-weight: bold; font-size: 14px; border: none;")
-        left_layout.addWidget(left_header)
+        # We need a custom layout for the preview card content
+        preview_layout = QVBoxLayout()
+        preview_layout.setContentsMargins(0,0,0,0)
         
-        # Separator
-        line1 = QFrame()
-        line1.setFrameShape(QFrame.Shape.HLine)
-        line1.setFrameShadow(QFrame.Shadow.Sunken)
-        line1.setStyleSheet("border: none; background-color: palette(mid); height: 1px;")
-        left_layout.addWidget(line1)
-
         # Graphics View
         self._scene = QGraphicsScene()
         self._image_view = ZoomableGraphicsView()
         self._image_view.setScene(self._scene)
-        self._image_view.setStyleSheet("border: none;") 
-        left_layout.addWidget(self._image_view)
+        self._image_view.setStyleSheet("border: none; background: transparent;") 
+        preview_layout.addWidget(self._image_view)
         
-        # Navigation Bar (Inside Left Panel per mockup? Or Bottom? Mockup shows bottom spanning both)
-        # Mockup shows specific Nav bar at bottom of Left Panel? 
-        # Actually mockup shows Nav bar at bottom of LEFT panel.
-        
+        # Navigation Bar
         self._nav_layout = QHBoxLayout()
-        self._prev_btn = QPushButton("Back") # "Back" in mockup
-        self._prev_btn.setIcon(QPixmap()) # Add icon later if needed
+        self._prev_btn = QPushButton("Back")
+        self._prev_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._prev_btn.clicked.connect(self._on_prev)
         
         self._next_btn = QPushButton("Next")
+        self._next_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._next_btn.clicked.connect(self._on_next)
         
-        self._page_label = QLabel("Page: 0 / 0") # Mockup style combo? Using Label/Spin for functionality
-        self._page_spin = QSpinBox() # Keep spinbox for utility
+        self._page_label = QLabel("Page: ")
+        self._page_spin = QSpinBox()
         self._page_spin.setMinimum(1)
         self._page_spin.valueChanged.connect(self._on_spinbox_changed)
         
         self._nav_layout.addWidget(self._prev_btn)
         self._nav_layout.addStretch()
-        self._nav_layout.addWidget(QLabel("Page: "))
+        self._nav_layout.addWidget(self._page_label)
         self._nav_layout.addWidget(self._page_spin)
         self._nav_label_total = QLabel("/ 0")
         self._nav_layout.addWidget(self._nav_label_total)
         self._nav_layout.addStretch()
         self._nav_layout.addWidget(self._next_btn)
         
-        left_layout.addLayout(self._nav_layout)
+        preview_layout.addLayout(self._nav_layout)
         
-        self._splitter.addWidget(left_panel)
+        self._preview_card.add_layout(preview_layout)
+        self._splitter.addWidget(self._preview_card)
 
-        # Right Panel (Text)
-        right_panel = QFrame()
-        right_panel.setFrameShape(QFrame.Shape.StyledPanel)
-        right_panel.setStyleSheet("background-color: palette(base); border: 1px solid palette(mid); border-radius: 8px;")
-        right_layout = QVBoxLayout(right_panel)
-        right_layout.setContentsMargins(10, 10, 10, 10)
+        # -- Right Panel (Text) Wrapped in Card --
+        self._text_card = Card(title="OCR Text Result")
         
-        right_header = QLabel("OCR Text Result")
-        right_header.setStyleSheet("font-weight: bold; font-size: 14px; border: none;")
-        right_layout.addWidget(right_header)
+        text_layout = QVBoxLayout()
+        text_layout.setContentsMargins(0,0,0,0)
         
-        line2 = QFrame()
-        line2.setFrameShape(QFrame.Shape.HLine)
-        line2.setFrameShadow(QFrame.Shadow.Sunken)
-        line2.setStyleSheet("border: none; background-color: palette(mid); height: 1px;")
-        right_layout.addWidget(line2)
-
         self._text_edit = QPlainTextEdit()
         self._text_edit.setFont(QFont("monospace", 11))
         self._text_edit.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
-        self._text_edit.setStyleSheet("border: none;") 
+        self._text_edit.setStyleSheet("border: none; background: transparent;") 
         self._highlighter = MarkdownHighlighter(self._text_edit.document())
-        right_layout.addWidget(self._text_edit)
+        text_layout.addWidget(self._text_edit)
         
-        self._splitter.addWidget(right_panel)
+        self._text_card.add_layout(text_layout)
+        self._splitter.addWidget(self._text_card)
+
         self._splitter.setSizes([400, 600]) # Initial split
 
         layout.addWidget(self._splitter)
         
-        # Add Scanning Overlay
+        # Add Scanning Overlay (Re-parent to image view or scene?)
+        # Since Image View is inside the Card, we can overlay it on the Image View or the Card.
+        # Original: Overlay on image view.
         from gui.scanning_overlay import ScanningOverlay
-        self._scanning_overlay = ScanningOverlay(left_panel) # Overlay on LEFT panel or whole?
-        # Mockup implies left panel preview changes?
-        # Let's verify existing behavior. PageViewer overlays the whole widget.
-        # I'll overlay the left panel (image) primarily.
         self._scanning_overlay = ScanningOverlay(self._image_view)
         self._scanning_overlay.hide()
         

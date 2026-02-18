@@ -40,7 +40,7 @@ class TitleBar(QFrame):
                 color: palette(text);
             }
             QPushButton:hover {
-                background-color: rgba(255, 255, 255, 0.1);
+                background-color: palette(alternate-base);
                 border-radius: 4px;
             }
         """)
@@ -78,9 +78,10 @@ class TitleBar(QFrame):
                 background-color: transparent;
                 font-family: 'Segoe UI Symbol', sans-serif; 
                 font-size: 10px;
+                color: palette(text);
             }
             QPushButton:hover {
-                background-color: rgba(255, 255, 255, 0.1);
+                background-color: palette(alternate-base);
             }
             QPushButton#closeBtn:hover {
                 background-color: #e81123;

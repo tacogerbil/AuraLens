@@ -9,8 +9,10 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QPushButton,
     QVBoxLayout,
+    QVBoxLayout,
     QWidget,
 )
+from PySide6.QtCore import Qt
 
 
 def format_eta(seconds: float) -> str:
@@ -44,36 +46,62 @@ class ProcessingWidget(QWidget):
 
     def _setup_ui(self) -> None:
         """Build the progress display layout."""
-        layout = QVBoxLayout(self)
-        layout.addStretch()
+        main_layout = QVBoxLayout(self)
+        main_layout.addStretch()
+
+        # Center Card
+        from gui.components.card import Card
+        self._card = Card(title="Processing Status")
+        self._card.setFixedWidth(400) # Fixed width for cleaner look
+        
+        card_layout = QVBoxLayout()
+        card_layout.setSpacing(15)
 
         # Stage indicator
         self._stage_label = QLabel("")
-        self._stage_label.setStyleSheet("font-weight: bold; font-size: 14px;")
-        layout.addWidget(self._stage_label)
+        self._stage_label.setStyleSheet("font-weight: bold; font-size: 14px; border: none;")
+        self._stage_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        card_layout.addWidget(self._stage_label)
 
         self._title_label = QLabel("Ready")
-        layout.addWidget(self._title_label)
+        self._title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._title_label.setStyleSheet("border: none; color: palette(text);")
+        self._title_label.setWordWrap(True)
+        card_layout.addWidget(self._title_label)
 
         self._page_label = QLabel("")
-        layout.addWidget(self._page_label)
+        self._page_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._page_label.setStyleSheet("border: none; color: palette(midlight);")
+        card_layout.addWidget(self._page_label)
 
         self._progress_bar = QProgressBar()
         self._progress_bar.setRange(0, 100)
         self._progress_bar.setValue(0)
-        layout.addWidget(self._progress_bar)
+        card_layout.addWidget(self._progress_bar)
 
         bottom_row = QHBoxLayout()
         self._eta_label = QLabel("")
+        self._eta_label.setStyleSheet("border: none;")
         bottom_row.addWidget(self._eta_label)
         bottom_row.addStretch()
 
         self._cancel_btn = QPushButton("Cancel")
+        self._cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._cancel_btn.clicked.connect(self.cancel_requested.emit)
         bottom_row.addWidget(self._cancel_btn)
 
-        layout.addLayout(bottom_row)
-        layout.addStretch()
+        card_layout.addLayout(bottom_row)
+        
+        self._card.add_layout(card_layout)
+        
+        # Add Card to Main Layout (Centered)
+        row = QHBoxLayout()
+        row.addStretch()
+        row.addWidget(self._card)
+        row.addStretch()
+        
+        main_layout.addLayout(row)
+        main_layout.addStretch()
 
     def start(self, filename: str, total_pages: int) -> None:
         """Reset all widgets for a new processing run."""
