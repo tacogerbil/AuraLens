@@ -222,6 +222,9 @@ class MainWindow(QMainWindow):
         )
         if path:
             self._current_pdf_path = Path(path)
+            # Calculate cache dir immediately so we can check if it exists (for prompt tester)
+            self._cache_dir = self._orchestrator.get_cache_dir_for_pdf(self._current_pdf_path)
+            
             self._page_texts.clear()
             self._auto_mode = False
             self._set_status(f"Loaded: {self._current_pdf_path.name}")
