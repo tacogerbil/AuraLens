@@ -109,8 +109,8 @@ class MainWindow(ModernWindow):
         
         # 4. Image Review (Legacy/Optional - keeping for flow compatibility if needed)
         self._image_review_widget = ImageReviewWidget()
-        self._image_review_widget.approval_given.connect(self._on_continue_to_ocr)
-        self._image_review_widget.cancellation_requested.connect(self._on_cancel_processing)
+        self._image_review_widget.continue_requested.connect(self._on_continue_to_ocr)
+        # self._image_review_widget.cancellation_requested.connect(self._on_cancel_processing) # Doesn't exist on widget yet
         self._stack.addWidget(self._image_review_widget)
         
         self._stack.setCurrentIndex(_IDX_HOME)
