@@ -143,21 +143,13 @@ class MainWindow(ModernWindow):
     # ── Status bar ──────────────────────────────────────────────────
 
     def _setup_status_bar(self) -> None:
-        """Add persistent status label."""
+        """Add persistent status label.
+        
+        Note: ModernWindow handles resizing natively via startSystemResize,
+        so QSizeGrip is not needed here.
+        """
         self._status_label = QLabel("Ready")
         self.statusBar().addPermanentWidget(self._status_label)
-        
-        # Add size grip for easier window resizing
-        self._size_grip = QSizeGrip(self)
-        self._size_grip.setStyleSheet("""
-            QSizeGrip {
-                background-color: #d0d0d0;
-                border: 1px solid #999999;
-                width: 16px;
-                height: 16px;
-            }
-        """)
-        self.statusBar().addPermanentWidget(self._size_grip)
 
     def _set_status(self, text: str) -> None:
         """Update the persistent status label."""
@@ -517,8 +509,8 @@ class MainWindow(ModernWindow):
         self._set_status(f"Re-scanning page {page_num}...")
         self._update_action_states()
         
-        # Show scanning overlay
-        self._page_viewer.show_scanning()
+        # Show scanning overlay on the split view
+        self._split_view.show_scanning()
 
         self._worker = OCRWorker(
             page_paths=[target_path],
@@ -538,7 +530,7 @@ class MainWindow(ModernWindow):
         logger.info("Re-scan finished for page %d", page_num)
         
         # Hide scanning overlay
-        self._page_viewer.hide_scanning()
+        self._split_view.hide_scanning()
         
         # Save to individual page file
         save_page_text(self._cache_dir, page_num, text)
@@ -546,18 +538,18 @@ class MainWindow(ModernWindow):
         # Update in-memory list
         self._page_texts[page_num - 1] = text
         
-        # Reload page viewer with updated text
+        # Reload split view with updated text and navigate to re-scanned page
         page_paths = self._orchestrator.get_page_paths_from_cache(
             self._cache_dir
         )
-        self._page_viewer.load_pages(page_paths, self._page_texts)
-        self._page_viewer._navigate_to(page_num)
+        self._split_view.load_pages(page_paths, self._page_texts)
+        self._split_view.navigate_to(page_num)
         self._set_status(f"Re-scan complete: Page {page_num}")
 
     def _on_re_scan_finished(self) -> None:
         """Cleanup after re-scan."""
-        # Hide scanning overlay (in case of error)
-        self._page_viewer.hide_scanning()
+        # Hide scanning overlay (in case of error path)
+        self._split_view.hide_scanning()
         
         self._is_processing = False
         self._worker = None
