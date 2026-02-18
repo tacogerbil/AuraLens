@@ -115,18 +115,6 @@ class MainWindow(ModernWindow):
         
         self._stack.setCurrentIndex(_IDX_HOME)
 
-        self._image_review_widget = ImageReviewWidget()
-        self._image_review_widget.continue_requested.connect(
-            self._on_continue_to_ocr
-        )
-        self._stack.addWidget(self._image_review_widget)
-
-        self._page_viewer = PageViewer()
-        self._page_viewer.re_scan_requested.connect(self._on_re_scan_page)
-        self._stack.addWidget(self._page_viewer)
-
-        self.setCentralWidget(self._central)
-
     # ── Toolbar ─────────────────────────────────────────────────────
 
     def _setup_toolbar(self) -> None:
