@@ -12,17 +12,19 @@ from PySide6.QtWidgets import (
     QLabel,
     QMessageBox,
     QPushButton,
-    QScrollArea,
     QSpinBox,
     QSplitter,
     QTextEdit,
     QVBoxLayout,
     QWidget,
     QGroupBox,
+    QGraphicsScene,
+    QGraphicsPixmapItem,
 )
 
 from core.config import Config
 from core.vlm_client import VLMClient, VLMError
+from gui.zoomable_view import ZoomableGraphicsView
 
 logger = logging.getLogger(__name__)
 
@@ -50,17 +52,14 @@ class PromptTester(QDialog):
         layout = QHBoxLayout(self)
         
         splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setHandleWidth(20)
         layout.addWidget(splitter)
         
-        # Left: Image Viewer
-        self._image_label = QLabel()
-        self._image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._image_label.setStyleSheet("background-color: #f0f0f0;")
-        
-        scroll_area = QScrollArea()
-        scroll_area.setWidget(self._image_label)
-        scroll_area.setWidgetResizable(True)
-        splitter.addWidget(scroll_area)
+        # Left: Image Viewer (Zoomable)
+        self._scene = QGraphicsScene()
+        self._image_view = ZoomableGraphicsView()
+        self._image_view.setScene(self._scene)
+        splitter.addWidget(self._image_view)
         
         # Right: Controls & Output
         right_panel = QWidget()
@@ -88,8 +87,9 @@ class PromptTester(QDialog):
         
         prompts_layout.addWidget(QLabel("User Prompt:"))
         self._user_prompt_edit = QTextEdit()
-        # Default user prompt is hardcoded in specific workers usually, but we can default it here
-        self._user_prompt_edit.setPlainText("Extract text from this image.") 
+        # Default to config user_prompt or fallback
+        default_user_prompt = getattr(self._config, "user_prompt", "Extract text from this image.")
+        self._user_prompt_edit.setPlainText(default_user_prompt) 
         self._user_prompt_edit.setMaximumHeight(60)
         prompts_layout.addWidget(self._user_prompt_edit)
         
@@ -120,12 +120,13 @@ class PromptTester(QDialog):
             
         path = self._page_paths[page_num - 1]
         pixmap = QPixmap(str(path))
+        
+        self._scene.clear()
         if not pixmap.isNull():
-            # Scale to fit width references if needed, but allow scroll
-            self._image_label.setPixmap(pixmap)
-            self._image_label.adjustSize()
+            self._scene.addPixmap(pixmap)
+            self._image_view.fit_to_width()
         else:
-            self._image_label.setText("Failed to load image")
+            self._scene.addText("Failed to load image")
 
     def _run_test(self) -> None:
         """Run single-page OCR with current prompts."""
