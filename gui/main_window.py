@@ -8,6 +8,8 @@ import logging
 from pathlib import Path
 from typing import List, Optional
 
+logger = logging.getLogger(__name__)
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFileDialog,
