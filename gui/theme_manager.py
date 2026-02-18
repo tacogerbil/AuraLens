@@ -49,29 +49,29 @@ DARK_THEME = ThemeColors(
     shadow="rgba(0, 0, 0, 0.5)"
 )
 
-# Clean (Light) Theme
+# Clean (Light) Theme - Reference Match
 LIGHT_THEME = ThemeColors(
-    window="#f0f2f5",            # Light gray background (like macOS/iOS grouptable)
-    window_text="#1a1a1a",
-    base="#ffffff",              # Card background
-    alternate_base="#f8f9fa",
-    text="#1a1a1a",
-    button="#e2e8f0",
-    button_text="#0f172a",
-    highlight="#3b82f6",
+    window="#eff6ff",            # Soft Blue-ish background (like Tailwind blue-50)
+    window_text="#1e293b",       # Slate-800
+    base="#ffffff",              # Pure White Cards
+    alternate_base="#f8fafc",    # Slate-50
+    text="#334155",              # Slate-700
+    button="#e2e8f0",            # Slate-200
+    button_text="#0f172a",       # Slate-900
+    highlight="#3b82f6",         # Blue-500
     highlighted_text="#ffffff",
-    border="#e2e8f0",
+    border="#cbd5e1",            # Slate-300
     surface_container_low="#ffffff",
     surface_container="#ffffff",
-    surface_container_high="#f8fafc",
-    card_border="#cbd5e1",      # Distinct border for light mode cards
-    shadow="rgba(0, 0, 0, 0.1)"
+    surface_container_high="#f1f5f9",
+    card_border="#dbeafe",       # Blue-100 (Subtle border)
+    shadow="rgba(148, 163, 184, 0.2)" # Blue-ish shadow
 )
 
 class ThemeManager:
     """Manages application-wide theme settings."""
     
-    _current_theme = Theme.DARK
+    _current_theme = Theme.LIGHT
 
     @classmethod
     def apply_theme(cls, app: QApplication, theme: Theme = Theme.DARK) -> None:

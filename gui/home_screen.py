@@ -28,7 +28,8 @@ class ActionCard(Card):
     clicked = Signal()
 
     def __init__(self, title: str, description: str, icon_char: str, action_text: str, color_accent: str):
-        super().__init__(accent_color=color_accent)
+        # Use color_accent for the full border to match the reference "Card-like" look
+        super().__init__(border_color=color_accent) 
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setFixedSize(240, 280) # Slightly larger for better spacing
 
@@ -122,7 +123,7 @@ class RecentFileRow(QFrame):
         name_lbl = QLabel(path.name)
         name_lbl.setStyleSheet("font-weight: bold; font-size: 14px; border: none; background: transparent;")
         path_lbl = QLabel(str(path.parent))
-        path_lbl.setStyleSheet("color: palette(text); opacity: 0.7; font-size: 12px; border: none; background: transparent;")
+        path_lbl.setStyleSheet("color: palette(text); font-size: 12px; border: none; background: transparent;")
         info_layout.addWidget(name_lbl)
         info_layout.addWidget(path_lbl)
         layout.addLayout(info_layout)
@@ -131,7 +132,7 @@ class RecentFileRow(QFrame):
         
         # Date
         date_lbl = QLabel(date_str)
-        date_lbl.setStyleSheet("color: palette(text); opacity: 0.5; border: none; background: transparent;")
+        date_lbl.setStyleSheet("color: palette(text); border: none; background: transparent;")
         layout.addWidget(date_lbl)
         
         # Styling for hover effect

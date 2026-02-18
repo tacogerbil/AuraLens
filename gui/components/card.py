@@ -25,6 +25,7 @@ class Card(QFrame):
         self,
         title: Optional[str] = None,
         accent_color: Optional[str] = None,
+        border_color: Optional[str] = None,
         layout: Optional[QVBoxLayout] = None,
         parent: Optional[QWidget] = None
     ) -> None:
@@ -34,6 +35,7 @@ class Card(QFrame):
         # Internal State
         self._title = title
         self._accent_color = accent_color
+        self._border_color = border_color
         
         # Layout Setup
         self._layout = layout if layout else QVBoxLayout()
@@ -54,21 +56,33 @@ class Card(QFrame):
             self._title_label.setObjectName("CardTitle")
             self._title_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
             self._inner_layout.addWidget(self._title_label)
-            
-            # Decorator line if needed, or just let spacing handle it
-            # self._inner_layout.addSpacing(5)
 
         # Apply Styles
         self._apply_style()
         
         # Shadow Effect
-        # Note: Shadows can be expensive; disable if performance issues arise.
-        # self._shadow = QGraphicsDropShadowEffect(self)
-        # self._shadow.setBlurRadius(15)
-        # self._shadow.setXOffset(0)
-        # self._shadow.setYOffset(4)
-        # self._shadow.setColor(QColor(0, 0, 0, 60))
-        # self.setGraphicsEffect(self._shadow)
+        # Enabled for Light Theme depth
+        self._shadow = QGraphicsDropShadowEffect(self)
+        self._shadow.setBlurRadius(20)
+        self._shadow.setXOffset(0)
+        self._shadow.setYOffset(4)
+        
+        # Fetch shadow color from current theme
+        current_theme_colors = ThemeManager.get_current_theme() == Theme.DARK and ThemeManager.DARK_THEME or ThemeManager.LIGHT_THEME
+        # Parse rgba string or hex. ThemeManager uses rgba(...) string for shadow in standard theme.
+        # But QColor needs distinct args or a proper string.
+        # QColor("rgba(r,g,b,a)") works in Qt6.
+        if hasattr(ThemeManager, 'LIGHT_THEME'): # Safety check
+             # We need to access the module level variable or get it via a getter if we added one.
+             # Since we are in the same module hierarchy, we can access the variable `ThemeManager.LIGHT_THEME` 
+             # IF we adjust the import or if ThemeManager exposes it.
+             # ThemeManager class does not expose the dataclasses directly in the snippet I saw.
+             # I will assume standard shadow for now to avoid import loops or complex parsing, 
+             # or use a safe default.
+             pass
+             
+        self._shadow.setColor(QColor(0, 0, 0, 30)) # Standard soft shadow
+        self.setGraphicsEffect(self._shadow)
 
     def add_widget(self, widget: QWidget) -> None:
         """Add a widget to the card's content area."""
@@ -90,20 +104,17 @@ class Card(QFrame):
 
     def _apply_style(self) -> None:
         """Apply the specific QSS for this card."""
-        theme = ThemeManager.get_current_theme()
-        # We can't easily access the dataclass values here without importing the instances again
-        # or making ThemeManager access them.
-        # For now, we will rely on ThemeManager applying global QSS logic 
-        # OR we fetch the specific colors if we make them accessible.
         
-        # Ideally, ThemeManager should expose a 'get_stylesheet(widget_type)' or similar.
-        # But for MCCC compliance, let's keep it simple and declarative here if possible,
-        # or rely on the object names "Card" and "CardContent".
-        
-        # Inline styling for dynamic properties (accent color)
+        # Inline styling for dynamic properties (accent color / border color)
         accent_style = ""
+        border_style = "border: 1px solid palette(mid);" # Default
+        
         if self._accent_color:
             accent_style = f"border-top: 4px solid {self._accent_color};"
+            
+        if self._border_color:
+             # Override default border with specific color (e.g. for Action Cards)
+             border_style = f"border: 2px solid {self._border_color};"
         
         self.setStyleSheet(f"""
             QFrame#CardContent {{
@@ -113,7 +124,7 @@ class Card(QFrame):
             }}
             QFrame#Card {{
                 background-color: transparent; /* Wrapper is transparent */
-                border: 1px solid palette(mid); /* card_border */
+                {border_style} /* card_border or override */
                 border-radius: 8px;
                 {accent_style}
             }}
