@@ -1,6 +1,6 @@
 """Modern Frameless Window with Native Resizing behavior."""
 
-from PySide6.QtCore import Qt, QPoint, QEvent, QSize
+from PySide6.QtCore import Qt, QPoint, QEvent, QSize, Signal
 from PySide6.QtGui import QMouseEvent, QCursor, QWindow
 from PySide6.QtWidgets import (
     QMainWindow,
@@ -24,7 +24,29 @@ class TitleBar(QFrame):
         
         self._layout = QHBoxLayout(self)
         self._layout.setContentsMargins(10, 0, 0, 0)
-        self._layout.setSpacing(0)
+        self._layout.setSpacing(5)
+
+        # Home Button
+        self._home_btn = QPushButton("⌂")
+        self._home_btn.setFixedSize(32, 32)
+        self._home_btn.setFlat(True)
+        self._home_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._home_btn.setToolTip("Go to Home Screen")
+        self._home_btn.setStyleSheet("""
+            QPushButton {
+                border: none;
+                background-color: transparent;
+                font-size: 16px;
+                color: palette(text);
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 255, 255, 0.1);
+                border-radius: 4px;
+            }
+        """)
+        # Connect to parent window's home signal trigger
+        self._home_btn.clicked.connect(self.window()._on_home_clicked)
+        self._layout.addWidget(self._home_btn)
 
         # Title
         self._title_label = QLabel(title)
@@ -81,6 +103,8 @@ class ModernWindow(QMainWindow):
     """Base class for modern frameless windows."""
 
     RESIZE_MARGIN = 6  # Pixels around the edge to trigger resize
+    
+    home_requested = Signal() # Signal to request switching to Home view
 
     def __init__(self):
         super().__init__()
@@ -108,6 +132,10 @@ class ModernWindow(QMainWindow):
         # Apply initial theme
         ThemeManager.apply_theme(QApplication.instance(), ThemeManager.get_current_theme())
         self._update_styles()
+
+    def _on_home_clicked(self):
+        """Handle home button click from title bar."""
+        self.home_requested.emit()
 
     def setWindowTitle(self, title: str):
         super().setWindowTitle(title)

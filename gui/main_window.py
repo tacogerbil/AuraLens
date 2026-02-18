@@ -233,27 +233,37 @@ class MainWindow(ModernWindow):
             self._page_texts.clear()
             self._auto_mode = False
             
-            # Switch to Split View immediately for "Preview" (Mockup 1 style)
-            # Even if not extracted, we might want to show something?
-            # Orchestrator handles extraction.
-            # If we want to show PREVIEW of PDF, we need to extract first.
-            # So standard flow: Open -> Extract -> Review/Split.
+            # Passive load: Update UI to show loaded file, but stay on Home Screen
+            self._set_status(f"Loaded: {self._current_pdf_path.name}")
+            self.setWindowTitle(f"AuraLens - {self._current_pdf_path.name}")
             
-            # Use Orchestrator logic to check status
-            if self._orchestrator.is_fully_cached(self._cache_dir):
-                self._load_from_cache()
-            else:
-                self._start_extraction()
+        if self._orchestrator.is_fully_cached(self._cache_dir):
+            self._home_screen.set_current_file(path, "Ready to Review")
+        else:
+            self._home_screen.set_current_file(path, "Analysis Pending")
+
+    def _on_home_clicked(self) -> None:
+        """Handle home button click from title bar."""
+        self._on_home()
 
     def _on_process(self) -> None:
         """Start processing (called from Home Card)."""
-        # If file already loaded/open, simplify logic
-        if self._current_pdf_path:
-             # Already have logic in _on_open_pdf to route to extraction/cache
-             # Just ensure we are in the right view
-             pass 
-        else:
+        # If no file loaded, ask for one
+        if not self._current_pdf_path:
              self._on_open_pdf()
+             # If still no file (user cancelled), return
+             if not self._current_pdf_path:
+                 return
+        
+        # Now we have a file, proceed to processing flow
+        if not self._validate_config():
+            return
+            
+        # Check if cache exists and is complete
+        if self._orchestrator.is_fully_cached(self._cache_dir):
+            self._load_from_cache()
+        else:
+            self._start_extraction()
 
     def _on_save_book(self) -> None:
         """Save processed text in chosen format."""

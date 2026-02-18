@@ -172,6 +172,12 @@ class HomeScreen(QWidget):
         header.setStyleSheet("font-size: 24px; font-weight: bold; color: palette(text);")
         main_layout.addWidget(header)
         
+        # Current File Indicator
+        self._current_file_label = QLabel("No file loaded")
+        self._current_file_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._current_file_label.setStyleSheet("color: palette(midlight); font-size: 14px;")
+        main_layout.addWidget(self._current_file_label)
+        
         # Cards Grid
         cards_layout = QGridLayout()
         cards_layout.setSpacing(20)
