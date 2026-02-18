@@ -38,6 +38,7 @@ class Config:
     inbox_dir: str = ""
     outbox_dir: str = ""
     system_prompt: str = field(default=DEFAULT_SYSTEM_PROMPT)
+    user_prompt: str = "Extract text from this image."
     
     # Window geometry persistence
     window_width: int = 1600
