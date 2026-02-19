@@ -28,7 +28,9 @@ from gui.inbox_coordinator import InboxCoordinator
 from gui.inbox_monitor import InboxMonitor
 from gui.processing_widget import ProcessingWidget
 from gui.save_manager import SaveManager
-from gui.workers import ExtractionWorker, VLMWorker
+
+from gui.workers import ExtractionWorker, OCRWorker, VLMWorker
+from core.book_assembler import BookAssembler
 
 # New UI Components
 from gui.modern_window import ModernWindow
@@ -112,6 +114,8 @@ class MainWindow(ModernWindow):
         
         # Index 1: Processing (Split View)
         self._process_page = SplitProcessingView()
+        self._process_page.run_ocr_requested.connect(lambda: self._start_ocr(resume=True))
+        self._process_page.accept_book_requested.connect(self._on_accept_book)
         self._process_page.re_scan_requested.connect(self._on_re_scan_page)
         self._process_page.home_requested.connect(self._on_home)
         self._stack.addWidget(self._process_page)
@@ -253,14 +257,106 @@ class MainWindow(ModernWindow):
         self._worker = None
         
         if self._auto_mode:
-            # Continue to OCR... (Implement logic if needed, or simplified flow)
-            pass
+            self._start_ocr(resume=True)
         else:
              # Load Split View
              page_paths = self._orchestrator.get_page_paths_from_cache(self._cache_dir)
              if not self._page_texts: self._page_texts = [""] * total
              self._process_page.load_pages(page_paths, self._page_texts)
+             # Check if completed (e.g. from previous run) to show correct buttons
+             is_complete = self._orchestrator.is_fully_cached(self._cache_dir)
+             self._process_page.set_ocr_completed(is_complete)
+             
              self._stack.setCurrentWidget(self._process_page)
+
+    def _start_ocr(self, resume: bool = True):
+        """Start or resume OCR processing."""
+        if not self._cache_dir: return
+
+        skip_pages = set()
+        if resume:
+            skip_pages = self._orchestrator.calculate_resume_pages(self._cache_dir)
+
+        params = self._orchestrator.get_ocr_params()
+        self._is_processing = True
+        
+        # Setup UI
+        self._stack.setCurrentWidget(self._processing_widget)
+        self._processing_widget.set_stage("Running OCR..." if not skip_pages else "Resuming OCR...")
+        
+        page_paths = self._orchestrator.get_page_paths_from_cache(self._cache_dir)
+        total = len(page_paths)
+        
+        # If we have existing text, pre-fill it so we don't lose it
+        # (OCRWorker does this now for skipped pages, but good to ensure state)
+        if len(self._page_texts) != total:
+             self._page_texts = [""] * total
+
+        self._worker = OCRWorker(
+            page_paths=page_paths,
+            skip_pages=skip_pages,
+            **params
+        )
+        self._worker.page_started.connect(lambda p, t: self._processing_widget.update_page(p, t))
+        self._worker.page_completed.connect(self._on_page_ocr_completed)
+        self._worker.processing_finished.connect(self._on_ocr_finished)
+        self._worker.start()
+
+    def _on_page_ocr_completed(self, page_num: int, total: int, text: str):
+        self._processing_widget.update_page(page_num, total)
+        # Update internal state and cache immediately
+        if 0 <= page_num - 1 < len(self._page_texts):
+            self._page_texts[page_num - 1] = text
+        save_page_text(self._cache_dir, page_num, text)
+
+    def _on_ocr_finished(self):
+        self._worker = None
+        self._is_processing = False
+        self._processing_widget.finish()
+        
+        # Load results into view
+        page_paths = self._orchestrator.get_page_paths_from_cache(self._cache_dir)
+        self._process_page.load_pages(page_paths, self._page_texts)
+        self._process_page.set_ocr_completed(True) # Assuming success leads to complete state
+        
+        self._stack.setCurrentWidget(self._process_page)
+        self._set_status("OCR Completed")
+
+    def _on_accept_book(self):
+        """Compile all pages and save to user-selected file."""
+        if not self._page_texts:
+            QMessageBox.warning(self, "Empty Book", "No text to save.")
+            return
+
+        # 1. Update with latest edits from UI
+        self._page_texts = self._process_page.get_all_texts()
+        
+        # 2. Ask user for save location
+        default_name = self._current_pdf_path.stem if self._current_pdf_path else "book"
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save Book", f"{default_name}.txt", _SAVE_FILTERS
+        )
+        
+        if not path:
+            return
+            
+        output_path = Path(path)
+        assembler = BookAssembler()
+        
+        try:
+            if output_path.suffix == ".txt":
+                assembler.save_to_file(self._page_texts, output_path)
+            elif output_path.suffix == ".md":
+                assembler.save_as_markdown(self._page_texts, output_path)
+            elif output_path.suffix == ".epub":
+                assembler.save_as_epub(self._page_texts, output_path, title=default_name)
+            
+            QMessageBox.information(self, "Saved", f"Book saved to:\n{output_path}")
+            self._set_status(f"Saved: {output_path.name}")
+            
+        except Exception as e:
+            logger.error("Failed to save book: %s", e)
+            QMessageBox.critical(self, "Save Error", f"Could not save file:\n{e}")
 
     def _on_cancel_processing(self):
         if self._worker:

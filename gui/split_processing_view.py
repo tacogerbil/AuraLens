@@ -47,6 +47,8 @@ class SplitProcessingView(QWidget):
     """
 
     re_scan_requested = Signal(int)   # page_num
+    run_ocr_requested = Signal()
+    accept_book_requested = Signal()
     navigation_changed = Signal(int)  # page_num
     home_requested = Signal()
 
@@ -56,8 +58,15 @@ class SplitProcessingView(QWidget):
         self._page_texts: List[str] = []
         self._current_page: int = 0
         self._total_pages: int = 0
+        self._is_complete: bool = False
 
         self._setup_ui()
+
+    def set_ocr_completed(self, completed: bool) -> None:
+        """Update UI state based on whether OCR is complete for all pages."""
+        self._is_complete = completed
+        self._run_ocr_btn.setVisible(not completed)
+        self._accept_btn.setVisible(completed)
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -71,6 +80,43 @@ class SplitProcessingView(QWidget):
         title.setStyleSheet("font-size: 15px; font-weight: bold; color: #334155;")
         header.addWidget(title)
         header.addStretch()
+
+        # Action Buttons
+        self._run_ocr_btn = QPushButton("Run OCR")
+        self._run_ocr_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._run_ocr_btn.clicked.connect(self.run_ocr_requested.emit)
+        self._run_ocr_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3b82f6;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 6px 12px;
+                font-weight: 600;
+            }
+            QPushButton:hover { background-color: #2563eb; }
+        """)
+        header.addWidget(self._run_ocr_btn)
+
+        self._accept_btn = QPushButton("Accept Book")
+        self._accept_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._accept_btn.clicked.connect(self.accept_book_requested.emit)
+        self._accept_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #22c55e;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 6px 12px;
+                font-weight: 600;
+            }
+            QPushButton:hover { background-color: #16a34a; }
+        """)
+        self._accept_btn.hide()
+        header.addWidget(self._accept_btn)
+
+        header.addSpacing(12)
+
         back_btn = QPushButton("← Dashboard")
         back_btn.setObjectName("navLink")
         back_btn.clicked.connect(self.home_requested.emit)
@@ -120,6 +166,27 @@ class SplitProcessingView(QWidget):
         self._page_spin.setMinimum(1)
         self._page_spin.valueChanged.connect(self._on_spinbox_changed)
         nav.addWidget(self._page_spin)
+
+        # Rescan current page button
+        self._rescan_btn = QPushButton("↺ Rescan")
+        self._rescan_btn.setToolTip("Re-run OCR on current page")
+        self._rescan_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._rescan_btn.clicked.connect(lambda: self.re_scan_requested.emit(self._current_page))
+        self._rescan_btn.setStyleSheet("""
+            QPushButton {
+                color: #64748b;
+                background: transparent;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 11px;
+            }
+            QPushButton:hover {
+                background-color: #f1f5f9;
+                color: #334155;
+            }
+        """)
+        nav.addWidget(self._rescan_btn)
 
         self._nav_label_total = QLabel("/ 0")
         self._nav_label_total.setStyleSheet("color: #64748b; font-weight: 600;")
