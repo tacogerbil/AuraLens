@@ -48,6 +48,7 @@ class SettingsPage(QWidget):
 
         bottom_bar = QHBoxLayout()
         back_btn = QPushButton("← Back to Dashboard")
+        back_btn.setObjectName("navLink")
         back_btn.clicked.connect(self.home_requested.emit)
         save_btn = QPushButton("Save Changes")
         save_btn.clicked.connect(self._on_save)

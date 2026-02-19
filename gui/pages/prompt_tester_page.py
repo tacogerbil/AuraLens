@@ -99,8 +99,7 @@ class PromptTesterPage(QWidget):
         row.addWidget(title)
         row.addStretch()
         back_btn = QPushButton("← Dashboard")
-        back_btn.setFlat(True)
-        back_btn.setStyleSheet("color: #4f8cff; font-weight: 600;")
+        back_btn.setObjectName("navLink")
         back_btn.clicked.connect(self.home_requested.emit)
         row.addWidget(back_btn)
         return row

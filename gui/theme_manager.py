@@ -171,6 +171,24 @@ class ThemeManager:
             font-weight: 700;
             color: #2c3e50;
         }}
+
+        /* Ghost / link-style navigation button (← Dashboard) */
+        QPushButton#navLink {{
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            color: #4f8cff;
+            font-weight: 600;
+            padding: 4px 10px;
+        }}
+        QPushButton#navLink:hover {{
+            background: rgba(79, 140, 255, 0.12);
+            border-color: rgba(79, 140, 255, 0.3);
+            color: #2563eb;
+        }}
+        QPushButton#navLink:pressed {{
+            background: rgba(79, 140, 255, 0.22);
+        }}
         """
         app.setStyleSheet(qss)
 
