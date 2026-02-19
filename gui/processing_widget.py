@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QVBoxLayout,
     QWidget,
+    QFrame
 )
 from PySide6.QtCore import Qt
 
@@ -49,50 +50,89 @@ class ProcessingWidget(QWidget):
         main_layout = QVBoxLayout(self)
         main_layout.addStretch()
 
-        # Center Card
-        from gui.components.card import Card
-        self._card = Card(title="Processing Status")
-        self._card.setFixedWidth(400) # Fixed width for cleaner look
+        # Center Card (Styled QFrame)
+        self._card = QFrame()
+        self._card.setFixedWidth(400)
+        self._card.setStyleSheet("""
+            QFrame {
+                background-color: white;
+                border: 1px solid #e2e8f0;
+                border-radius: 12px;
+            }
+        """)
         
-        card_layout = QVBoxLayout()
+        card_layout = QVBoxLayout(self._card)
+        card_layout.setContentsMargins(20, 20, 20, 20)
         card_layout.setSpacing(15)
+        
+        # Title Header (Internal label instead of card header for simplicity in progress view)
+        title_header = QLabel("Processing Status")
+        title_header.setStyleSheet("font-weight: bold; font-size: 16px; color: #334155; border: none;")
+        title_header.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        card_layout.addWidget(title_header)
 
         # Stage indicator
         self._stage_label = QLabel("")
-        self._stage_label.setStyleSheet("font-weight: bold; font-size: 14px; border: none;")
+        self._stage_label.setStyleSheet("font-weight: 600; font-size: 14px; color: #4f8cff; border: none;")
         self._stage_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         card_layout.addWidget(self._stage_label)
 
         self._title_label = QLabel("Ready")
         self._title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._title_label.setStyleSheet("border: none; color: palette(text);")
+        self._title_label.setStyleSheet("border: none; color: #64748b;")
         self._title_label.setWordWrap(True)
         card_layout.addWidget(self._title_label)
 
         self._page_label = QLabel("")
         self._page_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._page_label.setStyleSheet("border: none; color: palette(midlight);")
+        self._page_label.setStyleSheet("border: none; color: #94a3b8;")
         card_layout.addWidget(self._page_label)
 
         self._progress_bar = QProgressBar()
         self._progress_bar.setRange(0, 100)
         self._progress_bar.setValue(0)
+        # Modern ProgressBar Style
+        self._progress_bar.setStyleSheet("""
+            QProgressBar {
+                border: none;
+                background-color: #f1f5f9;
+                border-radius: 4px;
+                height: 8px;
+                text-align: center;
+            }
+            QProgressBar::chunk {
+                background-color: #4f8cff;
+                border-radius: 4px;
+            }
+        """)
+        self._progress_bar.setTextVisible(False)
         card_layout.addWidget(self._progress_bar)
 
         bottom_row = QHBoxLayout()
         self._eta_label = QLabel("")
-        self._eta_label.setStyleSheet("border: none;")
+        self._eta_label.setStyleSheet("border: none; color: #64748b; font-size: 12px;")
         bottom_row.addWidget(self._eta_label)
         bottom_row.addStretch()
-
+        
         self._cancel_btn = QPushButton("Cancel")
         self._cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._cancel_btn.clicked.connect(self.cancel_requested.emit)
+        self._cancel_btn.setStyleSheet("""
+            QPushButton {
+                color: #ef4444; 
+                background: transparent; 
+                border: 1px solid #fee2e2; 
+                border-radius: 6px;
+                padding: 4px 12px;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: #fef2f2;
+            }
+        """)
         bottom_row.addWidget(self._cancel_btn)
 
         card_layout.addLayout(bottom_row)
-        
-        self._card.add_layout(card_layout)
         
         # Add Card to Main Layout (Centered)
         row = QHBoxLayout()
