@@ -42,8 +42,18 @@ class SplitProcessingView(QWidget):
     navigation_changed = Signal(int)  # page_num
     home_requested = Signal()
 
-    def __init__(self) -> None:
+    def __init__(self, config=None) -> None:
         super().__init__()
+        # If config not passed (legacy init in MainWindow might need update), load default or require it. 
+        # MainWindow passes nothing currently. We need config.
+        # Let's import default if None, or update MainWindow to pass it. 
+        # Better to update MainWindow to pass config.
+        if config is None:
+             from core.config import load_config
+             self._config = load_config()
+        else:
+             self._config = config
+             
         self._image_paths: List[Path] = []
         self._page_texts: List[str] = []
         self._current_page: int = 0
@@ -249,6 +259,12 @@ class SplitProcessingView(QWidget):
         self._rescan_bar.hide()
         layout.addWidget(self._rescan_bar)
 
+        # Prompts Section (Collapsible or just at bottom)
+        from gui.components.prompt_editor_widget import PromptEditorWidget
+        self._prompt_editor = PromptEditorWidget(self._config)
+        self._prompt_editor.setMaximumHeight(200) # Limit height so it doesn't dominate
+        layout.addWidget(self._prompt_editor)
+
         # Scanning overlay (parented to image view)
         self._scanning_overlay = ScanningOverlay(self._image_view)
         self._scanning_overlay.hide()
@@ -396,6 +412,12 @@ class SplitProcessingView(QWidget):
         if 1 <= val <= self._total_pages:
             self._navigate_to(val)
 
+    def get_system_prompt(self) -> str:
+        return self._prompt_editor.get_system_prompt()
+
+    def get_user_prompt(self) -> str:
+        return self._prompt_editor.get_user_prompt()
+        
     def resizeEvent(self, event):
         super().resizeEvent(event)
         if hasattr(self, '_scanning_overlay') and self._scanning_overlay.isVisible():

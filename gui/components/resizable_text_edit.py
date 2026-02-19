@@ -45,6 +45,9 @@ class ResizeHandle(QFrame):
 
 class ResizableTextEdit(QWidget):
     """A QTextEdit wrapper that allows vertical resizing via a bottom drag handle."""
+    
+    textChanged = Signal()
+    heightChanged = Signal(int)
 
     def __init__(self, text: str = "", height: int = 100, parent=None):
         super().__init__(parent)
@@ -66,6 +69,7 @@ class ResizableTextEdit(QWidget):
                 padding: 8px;
             }
         """)
+        self._edit.textChanged.connect(self.textChanged.emit)
         self._layout.addWidget(self._edit)
         
         self._handle = ResizeHandle()
@@ -75,6 +79,7 @@ class ResizableTextEdit(QWidget):
     def _on_handle_dragged(self, dy: int):
         new_height = max(60, self._edit.height() + dy)
         self._edit.setFixedHeight(new_height)
+        self.heightChanged.emit(new_height)
 
     # ── Public API (Proxying QTextEdit) ──────────────────────────────────
     

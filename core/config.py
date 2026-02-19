@@ -40,6 +40,7 @@ class Config:
     system_prompt: str = field(default=DEFAULT_SYSTEM_PROMPT)
     user_prompt: str = "Extract text from this image."
     system_prompt_height: int = 100  # Persistence for UI resizing
+    user_prompt_height: int = 60
     
     # Window geometry persistence
     window_width: int = 1600

@@ -307,6 +307,11 @@ class MainWindow(ModernWindow):
         self._stack.setCurrentWidget(self._processing_widget)
         self._processing_widget.set_stage("Running OCR..." if not skip_pages else "Resuming OCR...")
         
+        # Override prompts with current UI values if available
+        if hasattr(self._process_page, "get_system_prompt"):
+             params["system_prompt"] = self._process_page.get_system_prompt()
+             params["user_prompt"] = self._process_page.get_user_prompt()
+
         page_paths = self._orchestrator.get_page_paths_from_cache(self._cache_dir)
         total = len(page_paths)
         
@@ -444,8 +449,9 @@ class MainWindow(ModernWindow):
             timeout=params["timeout"],
             max_tokens=params["max_tokens"],
             temperature=params["temperature"],
-            system_prompt=params["system_prompt"],
-            user_prompt=params["user_prompt"],
+            temperature=params["temperature"],
+            system_prompt=self._process_page.get_system_prompt(),
+            user_prompt=self._process_page.get_user_prompt(),
         )
         self._worker.token_received.connect(self._on_rescan_token)
         self._worker.result_ready.connect(self._on_rescan_complete)

@@ -20,7 +20,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from gui.components.prompt_editor_widget import PromptEditorWidget
+
 from core.config import Config
+from core.page_cache import load_page_text
 from gui.workers import VLMWorker
 from gui.zoomable_view import ZoomableGraphicsView
 
@@ -196,40 +199,9 @@ class PromptTesterPage(QWidget):
         return row
 
     def _build_prompts_section(self) -> QWidget:
-        """Vertically resizable System Prompt / User Prompt panels."""
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-
-        splitter = QSplitter(Qt.Orientation.Vertical)
-        splitter.setHandleWidth(8)
-        splitter.setChildrenCollapsible(False)
-        splitter.addWidget(self._build_prompt_panel(
-            "System Prompt:", self._config.system_prompt, "_system_prompt_edit"
-        ))
-        splitter.addWidget(self._build_prompt_panel(
-            "User Prompt:",
-            getattr(self._config, "user_prompt", "Extract text from this image."),
-            "_user_prompt_edit",
-        ))
-        splitter.setSizes([200, 100])
-
-        layout.addWidget(splitter)
-        return widget
-
-    def _build_prompt_panel(self, label: str, text: str, attr: str) -> QWidget:
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
-        layout.setContentsMargins(0, 4, 0, 0)
-        layout.setSpacing(4)
-        layout.addWidget(QLabel(label))
-        edit = QTextEdit()
-        edit.setPlainText(text)
-        edit.setMinimumHeight(40)
-        layout.addWidget(edit)
-        setattr(self, attr, edit)
-        return widget
+        """Vertically resizable System Prompt / User Prompt panels (using PromptEditorWidget)."""
+        self._prompt_editor = PromptEditorWidget(self._config)
+        return self._prompt_editor
 
     # ── Navigation ───────────────────────────────────────────────────
 
@@ -250,8 +222,15 @@ class PromptTesterPage(QWidget):
         self._scene.clear()
         if not pixmap.isNull():
             self._scene.addPixmap(pixmap)
+            self._image_view.fit_to_width()
         else:
             self._scene.addText("Failed to load image")
+            
+        # Load cached text
+        text = load_page_text(self._cache_dir, page_num)
+        self._output_edit.setPlainText(text)
+        if not text:
+            self._output_edit.setPlaceholderText("No cached text found for this page.")
         total = len(self._page_paths)
         self._prev_btn.setEnabled(page_num > 1)
         self._next_btn.setEnabled(page_num < total)
@@ -280,8 +259,9 @@ class PromptTesterPage(QWidget):
             timeout=params["timeout"],
             max_tokens=params["max_tokens"],
             temperature=params["temperature"],
-            system_prompt=self._system_prompt_edit.toPlainText(),
-            user_prompt=self._user_prompt_edit.toPlainText(),
+            temperature=params["temperature"],
+            system_prompt=self._prompt_editor.get_system_prompt(),
+            user_prompt=self._prompt_editor.get_user_prompt(),
         )
         self._worker.token_received.connect(self._on_token)
         self._worker.result_ready.connect(self._on_result)
