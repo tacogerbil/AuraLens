@@ -44,12 +44,12 @@ from gui.zoomable_view import ZoomableGraphicsView
 class SplitProcessingView(QWidget):
     """
     Split view for PDF Page Preview (Left) and OCR Text Result (Right).
-    Matches the 'Process PDF' mockup.
     """
 
-    re_scan_requested = Signal(int)  # page_num
-    navigation_changed = Signal(int) # page_num
-    
+    re_scan_requested = Signal(int)   # page_num
+    navigation_changed = Signal(int)  # page_num
+    home_requested = Signal()
+
     def __init__(self) -> None:
         super().__init__()
         self._image_paths: List[Path] = []
@@ -61,82 +61,90 @@ class SplitProcessingView(QWidget):
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(20)
+        layout.setContentsMargins(12, 6, 12, 12)
+        layout.setSpacing(4)
 
-        # Splitter Area
+        # Header: tool name left, back button right
+        header = QHBoxLayout()
+        header.setContentsMargins(0, 0, 0, 0)
+        title = QLabel("PDF Processor")
+        title.setStyleSheet("font-size: 15px; font-weight: bold; color: #334155;")
+        header.addWidget(title)
+        header.addStretch()
+        back_btn = QPushButton("← Dashboard")
+        back_btn.setFlat(True)
+        back_btn.setStyleSheet("color: #4f8cff; font-weight: 600;")
+        back_btn.clicked.connect(self.home_requested.emit)
+        header.addWidget(back_btn)
+        layout.addLayout(header)
+
+        # Splitter: PDF image (left) | OCR text (right)
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
-        self._splitter.setHandleWidth(10)
+        self._splitter.setHandleWidth(8)
         self._splitter.setChildrenCollapsible(False)
-        
-        # -- Left Panel (Preview) --
+
+        # Left panel
         self._preview_card, preview_content_layout = self._create_card("PDF Page Preview")
-        
-        # Graphics View
         self._scene = QGraphicsScene()
         self._image_view = ZoomableGraphicsView()
         self._image_view.setScene(self._scene)
-        self._image_view.setStyleSheet("border: none; background: transparent;") 
+        self._image_view.setStyleSheet("border: none; background: transparent;")
         preview_content_layout.addWidget(self._image_view)
-        
-        # Navigation Bar
-        self._nav_layout = QHBoxLayout()
-        self._nav_layout.setContentsMargins(10, 5, 10, 5) # Padding for nav bar
-        
-        self._prev_btn = QPushButton("Back")
+        self._splitter.addWidget(self._preview_card)
+
+        # Right panel
+        self._text_card, text_content_layout = self._create_card("OCR Text Result")
+        self._text_edit = QPlainTextEdit()
+        self._text_edit.setFont(QFont("monospace", 11))
+        self._text_edit.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
+        self._text_edit.setStyleSheet("border: none; background: transparent;")
+        self._highlighter = MarkdownHighlighter(self._text_edit.document())
+        text_content_layout.addWidget(self._text_edit)
+        self._splitter.addWidget(self._text_card)
+
+        self._splitter.setSizes([500, 700])
+        layout.addWidget(self._splitter)
+
+        # Centred navigation bar (full-width, below both panels)
+        nav = QHBoxLayout()
+        nav.setSpacing(8)
+        nav.addStretch()
+
+        self._prev_btn = QPushButton("←")
+        self._prev_btn.setFixedWidth(40)
         self._prev_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._prev_btn.clicked.connect(self._on_prev)
-        
-        self._next_btn = QPushButton("Next")
-        self._next_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._next_btn.clicked.connect(self._on_next)
-        
-        self._page_label = QLabel("Page: ")
-        self._page_label.setStyleSheet("color: #64748b; font-weight: 600;")
-        
+        nav.addWidget(self._prev_btn)
+
         self._page_spin = QSpinBox()
+        self._page_spin.setFixedWidth(70)
         self._page_spin.setMinimum(1)
         self._page_spin.valueChanged.connect(self._on_spinbox_changed)
-        
-        self._nav_layout.addWidget(self._prev_btn)
-        self._nav_layout.addStretch()
-        self._nav_layout.addWidget(self._page_label)
-        self._nav_layout.addWidget(self._page_spin)
+        nav.addWidget(self._page_spin)
+
         self._nav_label_total = QLabel("/ 0")
         self._nav_label_total.setStyleSheet("color: #64748b; font-weight: 600;")
-        self._nav_layout.addWidget(self._nav_label_total)
-        self._nav_layout.addStretch()
-        self._nav_layout.addWidget(self._next_btn)
-        
-        preview_content_layout.addLayout(self._nav_layout)
+        nav.addWidget(self._nav_label_total)
 
+        self._next_btn = QPushButton("→")
+        self._next_btn.setFixedWidth(40)
+        self._next_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._next_btn.clicked.connect(self._on_next)
+        nav.addWidget(self._next_btn)
+
+        nav.addStretch()
+        layout.addLayout(nav)
+
+        # Rescan gradient progress bar (hidden when idle)
         self._rescan_bar = QProgressBar()
         self._rescan_bar.setRange(0, 0)
         self._rescan_bar.setFixedHeight(8)
         self._rescan_bar.setTextVisible(False)
         self._rescan_bar.setStyleSheet(_GRADIENT_BAR_STYLE)
         self._rescan_bar.hide()
-        preview_content_layout.addWidget(self._rescan_bar)
+        layout.addWidget(self._rescan_bar)
 
-        self._splitter.addWidget(self._preview_card)
-
-        # -- Right Panel (Text) --
-        self._text_card, text_content_layout = self._create_card("OCR Text Result")
-        
-        self._text_edit = QPlainTextEdit()
-        self._text_edit.setFont(QFont("monospace", 11))
-        self._text_edit.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
-        self._text_edit.setStyleSheet("border: none; background: transparent;") 
-        self._highlighter = MarkdownHighlighter(self._text_edit.document())
-        text_content_layout.addWidget(self._text_edit)
-        
-        self._splitter.addWidget(self._text_card)
-
-        self._splitter.setSizes([500, 700]) # Initial split
-
-        layout.addWidget(self._splitter)
-        
-        # Add Scanning Overlay
+        # Scanning overlay (parented to image view)
         from gui.scanning_overlay import ScanningOverlay
         self._scanning_overlay = ScanningOverlay(self._image_view)
         self._scanning_overlay.hide()
@@ -158,14 +166,14 @@ class SplitProcessingView(QWidget):
         # Title Header
         title_lbl = QLabel(title)
         title_lbl.setStyleSheet("""
-            font-weight: bold; 
-            font-size: 14px; 
-            padding: 12px 16px; 
-            color: #334155; 
+            font-weight: bold;
+            font-size: 12px;
+            padding: 5px 12px;
+            color: #334155;
             border-bottom: 1px solid #f1f5f9;
             background-color: transparent;
         """)
-        title_lbl.setFixedHeight(40)
+        title_lbl.setFixedHeight(26)
         title_lbl.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
         card_layout.addWidget(title_lbl)
         

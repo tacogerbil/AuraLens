@@ -76,8 +76,8 @@ class PromptTesterPage(QWidget):
 
     def _setup_ui(self) -> None:
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(8)
+        main_layout.setContentsMargins(12, 6, 12, 12)
+        main_layout.setSpacing(4)
 
         main_layout.addLayout(self._build_header())
 
@@ -93,13 +93,16 @@ class PromptTesterPage(QWidget):
 
     def _build_header(self) -> QHBoxLayout:
         row = QHBoxLayout()
-        back_btn = QPushButton("← Back to Dashboard")
-        back_btn.clicked.connect(self.home_requested.emit)
-        row.addWidget(back_btn)
+        row.setContentsMargins(0, 0, 0, 0)
         title = QLabel("Prompt Tester")
-        title.setStyleSheet("font-size: 20px; font-weight: bold;")
+        title.setStyleSheet("font-size: 15px; font-weight: bold; color: #334155;")
         row.addWidget(title)
         row.addStretch()
+        back_btn = QPushButton("← Dashboard")
+        back_btn.setFlat(True)
+        back_btn.setStyleSheet("color: #4f8cff; font-weight: 600;")
+        back_btn.clicked.connect(self.home_requested.emit)
+        row.addWidget(back_btn)
         return row
 
     def _build_viewer_section(self) -> QWidget:
@@ -107,7 +110,7 @@ class PromptTesterPage(QWidget):
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(6)
+        layout.setSpacing(4)
 
         # 50/50 horizontal split
         view_split = QSplitter(Qt.Orientation.Horizontal)
@@ -154,6 +157,7 @@ class PromptTesterPage(QWidget):
     def _build_nav_bar(self) -> QHBoxLayout:
         row = QHBoxLayout()
         row.setSpacing(8)
+        row.addStretch()  # centre-align the whole group
 
         self._prev_btn = QPushButton("←")
         self._prev_btn.setFixedWidth(40)
@@ -178,7 +182,7 @@ class PromptTesterPage(QWidget):
         self._next_btn.clicked.connect(self._on_next)
         row.addWidget(self._next_btn)
 
-        row.addStretch()
+        row.addSpacing(24)  # visual gap between nav and run button
 
         self._run_btn = QPushButton("Run Test")
         self._run_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -188,6 +192,7 @@ class PromptTesterPage(QWidget):
         )
         row.addWidget(self._run_btn)
 
+        row.addStretch()  # mirror stretch to keep group centred
         return row
 
     def _build_prompts_section(self) -> QWidget:

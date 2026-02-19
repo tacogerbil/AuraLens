@@ -16,12 +16,8 @@ from PySide6.QtWidgets import (
     QLabel,
     QMessageBox,
     QStackedLayout,
-    QWidget,
-    QToolBar,
     QVBoxLayout,
-    QHBoxLayout,
-    QFrame,
-    QPushButton
+    QWidget,
 )
 
 from core.config import Config, save_config
@@ -99,30 +95,10 @@ class MainWindow(ModernWindow):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
         
-        # 1. Custom Header
-        self._header = QFrame()
-        self._header.setFixedHeight(60)
-        self._header.setStyleSheet("background: transparent; border-bottom: 1px solid rgba(0,0,0,0.05);")
-        
-        header_layout = QHBoxLayout(self._header)
-        header_layout.setContentsMargins(20, 0, 20, 0)
-        
-        title = QLabel("AuraLens")
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #334155;")
-        header_layout.addWidget(title)
-        
-        header_layout.addStretch()
-        
-        # Header Nav Buttons (Optional, for quick access)
-        btn_home = QPushButton("Dashboard")
-        btn_home.setFlat(True)
-        btn_home.setStyleSheet("color: #4f8cff; font-weight: bold; background: transparent;")
-        btn_home.clicked.connect(self._on_home)
-        header_layout.addWidget(btn_home)
-        
-        main_layout.addWidget(self._header)
-        
-        # 2. Stacked Content
+        # Title-bar ⌂ button wired here (ModernWindow emits home_requested)
+        self.home_requested.connect(self._on_home)
+
+        # Stacked Content
         self._stack = QStackedLayout()
         
         # Pages
@@ -137,8 +113,7 @@ class MainWindow(ModernWindow):
         # Index 1: Processing (Split View)
         self._process_page = SplitProcessingView()
         self._process_page.re_scan_requested.connect(self._on_re_scan_page)
-        # Add a "Back to Dashboard" button logic to SplitProcessingView? 
-        # Or rely on Header "Dashboard" button.
+        self._process_page.home_requested.connect(self._on_home)
         self._stack.addWidget(self._process_page)
         
         # Index 2: Prompt Tester Page
