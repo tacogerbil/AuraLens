@@ -43,30 +43,28 @@ class SplitProcessingView(QWidget):
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(10)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(20)
 
         # Splitter Area
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
-        self._splitter.setHandleWidth(8) # Visible/Graspable handle
+        self._splitter.setHandleWidth(10)
         self._splitter.setChildrenCollapsible(False)
         
-        # -- Left Panel (Preview) Wrapped in Card --
-        self._preview_card = Card(title="PDF Page Preview")
-        
-        # We need a custom layout for the preview card content
-        preview_layout = QVBoxLayout()
-        preview_layout.setContentsMargins(0,0,0,0)
+        # -- Left Panel (Preview) --
+        self._preview_card, preview_content_layout = self._create_card("PDF Page Preview")
         
         # Graphics View
         self._scene = QGraphicsScene()
         self._image_view = ZoomableGraphicsView()
         self._image_view.setScene(self._scene)
         self._image_view.setStyleSheet("border: none; background: transparent;") 
-        preview_layout.addWidget(self._image_view)
+        preview_content_layout.addWidget(self._image_view)
         
         # Navigation Bar
         self._nav_layout = QHBoxLayout()
+        self._nav_layout.setContentsMargins(10, 5, 10, 5) # Padding for nav bar
+        
         self._prev_btn = QPushButton("Back")
         self._prev_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._prev_btn.clicked.connect(self._on_prev)
@@ -76,6 +74,8 @@ class SplitProcessingView(QWidget):
         self._next_btn.clicked.connect(self._on_next)
         
         self._page_label = QLabel("Page: ")
+        self._page_label.setStyleSheet("color: #64748b; font-weight: 600;")
+        
         self._page_spin = QSpinBox()
         self._page_spin.setMinimum(1)
         self._page_spin.valueChanged.connect(self._on_spinbox_changed)
@@ -85,41 +85,72 @@ class SplitProcessingView(QWidget):
         self._nav_layout.addWidget(self._page_label)
         self._nav_layout.addWidget(self._page_spin)
         self._nav_label_total = QLabel("/ 0")
+        self._nav_label_total.setStyleSheet("color: #64748b; font-weight: 600;")
         self._nav_layout.addWidget(self._nav_label_total)
         self._nav_layout.addStretch()
         self._nav_layout.addWidget(self._next_btn)
         
-        preview_layout.addLayout(self._nav_layout)
+        preview_content_layout.addLayout(self._nav_layout)
         
-        self._preview_card.add_layout(preview_layout)
         self._splitter.addWidget(self._preview_card)
 
-        # -- Right Panel (Text) Wrapped in Card --
-        self._text_card = Card(title="OCR Text Result")
-        
-        text_layout = QVBoxLayout()
-        text_layout.setContentsMargins(0,0,0,0)
+        # -- Right Panel (Text) --
+        self._text_card, text_content_layout = self._create_card("OCR Text Result")
         
         self._text_edit = QPlainTextEdit()
         self._text_edit.setFont(QFont("monospace", 11))
         self._text_edit.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
         self._text_edit.setStyleSheet("border: none; background: transparent;") 
         self._highlighter = MarkdownHighlighter(self._text_edit.document())
-        text_layout.addWidget(self._text_edit)
+        text_content_layout.addWidget(self._text_edit)
         
-        self._text_card.add_layout(text_layout)
         self._splitter.addWidget(self._text_card)
 
-        self._splitter.setSizes([400, 600]) # Initial split
+        self._splitter.setSizes([500, 700]) # Initial split
 
         layout.addWidget(self._splitter)
         
-        # Add Scanning Overlay (Re-parent to image view or scene?)
-        # Since Image View is inside the Card, we can overlay it on the Image View or the Card.
-        # Original: Overlay on image view.
+        # Add Scanning Overlay
         from gui.scanning_overlay import ScanningOverlay
         self._scanning_overlay = ScanningOverlay(self._image_view)
         self._scanning_overlay.hide()
+
+    def _create_card(self, title: str) -> tuple[QFrame, QVBoxLayout]:
+        """Create a styled card with a title header."""
+        card = QFrame()
+        card.setStyleSheet("""
+            QFrame {
+                background-color: white;
+                border: 1px solid #e2e8f0;
+                border-radius: 12px;
+            }
+        """)
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(0, 0, 0, 0)
+        card_layout.setSpacing(0)
+        
+        # Title Header
+        title_lbl = QLabel(title)
+        title_lbl.setStyleSheet("""
+            font-weight: bold; 
+            font-size: 14px; 
+            padding: 12px 16px; 
+            color: #334155; 
+            border-bottom: 1px solid #f1f5f9;
+            background-color: transparent;
+        """)
+        title_lbl.setFixedHeight(40)
+        title_lbl.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
+        card_layout.addWidget(title_lbl)
+        
+        # Content Area
+        content_widget = QWidget()
+        content_widget.setStyleSheet("background: transparent; border: none;")
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        card_layout.addWidget(content_widget)
+        
+        return card, content_layout
         
     # ── Public API (Same as PageViewer for compatibility) ──────────────────
 
