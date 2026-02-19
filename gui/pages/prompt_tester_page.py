@@ -259,7 +259,7 @@ class PromptTesterPage(QWidget):
             timeout=params["timeout"],
             max_tokens=params["max_tokens"],
             temperature=params["temperature"],
-            temperature=params["temperature"],
+
             system_prompt=self._prompt_editor.get_system_prompt(),
             user_prompt=self._prompt_editor.get_user_prompt(),
         )
