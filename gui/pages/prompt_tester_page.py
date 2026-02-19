@@ -63,6 +63,7 @@ class PromptTesterPage(QWidget):
         self._config = config
         self._cache_dir = cache_dir
         self._worker: Optional[VLMWorker] = None
+        self._token_count: int = 0
 
         from core.workflow_orchestrator import WorkflowOrchestrator
         self._orchestrator = WorkflowOrchestrator(config)
@@ -263,9 +264,11 @@ class PromptTesterPage(QWidget):
         page_num = self._page_spin.value()
         page_path = self._page_paths[page_num - 1]
 
-        self._output_edit.setPlainText("Running...")
+        self._token_count = 0
+        self._output_edit.clear()
         self._run_btn.setEnabled(False)
-        self._progress_bar.setRange(0, 0)  # indeterminate pulsing
+        self._progress_bar.setRange(0, 100)
+        self._progress_bar.setValue(0)
         self._progress_bar.show()
 
         params = self._orchestrator.get_ocr_params()
@@ -280,22 +283,33 @@ class PromptTesterPage(QWidget):
             system_prompt=self._system_prompt_edit.toPlainText(),
             user_prompt=self._user_prompt_edit.toPlainText(),
         )
+        self._worker.token_received.connect(self._on_token)
         self._worker.result_ready.connect(self._on_result)
         self._worker.error_occurred.connect(self._on_error)
-        self._worker.finished.connect(self._on_worker_done)
+        self._worker.finished.connect(lambda: self._run_btn.setEnabled(True))
         self._worker.start()
 
+    def _on_token(self, chunk: str) -> None:
+        """Append each streamed chunk to the output and advance the progress bar."""
+        self._token_count += 1
+        # Cursor-append is faster than rebuilding the full text each time
+        cursor = self._output_edit.textCursor()
+        cursor.movePosition(cursor.MoveOperation.End)
+        cursor.insertText(chunk)
+        self._output_edit.setTextCursor(cursor)
+        # Progress: tokens received vs configured max — fills as text arrives
+        params = self._orchestrator.get_ocr_params()
+        pct = min(95, int(self._token_count * 100 / max(1, params["max_tokens"])))
+        self._progress_bar.setValue(pct)
+
     def _on_result(self, text: str) -> None:
+        """Replace streaming output with final cleaned text and complete the bar."""
         self._output_edit.setPlainText(text)
-        self._progress_bar.setRange(0, 100)
         self._progress_bar.setValue(100)
 
     def _on_error(self, msg: str) -> None:
         self._output_edit.setPlainText(f"Error: {msg}")
         self._progress_bar.hide()
-
-    def _on_worker_done(self) -> None:
-        self._run_btn.setEnabled(True)
 
 
 # ── Module helpers ────────────────────────────────────────────────────────────

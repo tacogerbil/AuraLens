@@ -28,7 +28,7 @@ from gui.inbox_coordinator import InboxCoordinator
 from gui.inbox_monitor import InboxMonitor
 from gui.processing_widget import ProcessingWidget
 from gui.save_manager import SaveManager
-from gui.workers import ExtractionWorker, OCRWorker, VLMWorker
+from gui.workers import ExtractionWorker, VLMWorker
 
 # New UI Components
 from gui.modern_window import ModernWindow
@@ -304,21 +304,37 @@ class MainWindow(ModernWindow):
 
         self._process_page.show_scanning()
         params = self._orchestrator.get_ocr_params()
-        self._worker = OCRWorker(
-            page_paths=[page_paths[page_num - 1]],
-            skip_pages=set(),
-            **params,
+        self._rescan_page_num = page_num
+        self._rescan_token_count = 0
+        self._rescan_max_tokens = params["max_tokens"]
+
+        self._worker = VLMWorker(
+            page_path=page_paths[page_num - 1],
+            api_url=params["api_url"],
+            api_key=params["api_key"],
+            model_name=params["model_name"],
+            timeout=params["timeout"],
+            max_tokens=params["max_tokens"],
+            temperature=params["temperature"],
+            system_prompt=params["system_prompt"],
+            user_prompt=params["user_prompt"],
         )
-        self._worker.page_completed.connect(self._on_rescan_complete)
-        self._worker.page_error.connect(
-            lambda _pn, msg: self._on_rescan_error(msg)
-        )
-        self._worker.processing_finished.connect(self._process_page.hide_scanning)
+        self._worker.token_received.connect(self._on_rescan_token)
+        self._worker.result_ready.connect(self._on_rescan_complete)
+        self._worker.error_occurred.connect(self._on_rescan_error)
+        self._worker.finished.connect(self._process_page.hide_scanning)
         self._worker.start()
 
-    def _on_rescan_complete(self, page_num: int, _total: int, text: str) -> None:
+    def _on_rescan_token(self, _chunk: str) -> None:
+        """Advance rescan progress bar based on received token count."""
+        self._rescan_token_count += 1
+        pct = min(95, int(self._rescan_token_count * 100
+                          / max(1, self._rescan_max_tokens)))
+        self._process_page.set_rescan_progress(pct)
+
+    def _on_rescan_complete(self, text: str) -> None:
         """Update split view with freshly scanned text."""
-        self._process_page.update_page_text(page_num, text)
+        self._process_page.update_page_text(self._rescan_page_num, text)
 
     def _on_rescan_error(self, msg: str) -> None:
         QMessageBox.warning(self, "Re-scan Error", f"Re-scan failed: {msg}")

@@ -191,11 +191,17 @@ class OCRWorker(QThread):
 class VLMWorker(QThread):
     """Process a single page image through the VLM off the main thread.
 
-    Used by PromptTesterPage for interactive prompt testing without
-    blocking the GUI event loop.
+    Streams the response token-by-token so the UI can display live text
+    and track real progress. Used by PromptTesterPage.
+
+    Signals:
+        token_received: Fired for each text fragment as it arrives.
+        result_ready:   Fired once with the complete, cleaned response.
+        error_occurred: Fired on any exception, with the error message.
     """
 
-    result_ready = Signal(str)
+    token_received = Signal(str)   # live chunk from SSE stream
+    result_ready = Signal(str)     # full cleaned text on completion
     error_occurred = Signal(str)
 
     def __init__(
@@ -222,7 +228,7 @@ class VLMWorker(QThread):
         self._user_prompt = user_prompt
 
     def run(self) -> None:
-        """Execute single-page VLM call and emit result or error."""
+        """Stream single-page VLM response, emitting each chunk as it arrives."""
         try:
             client = VLMClient(
                 api_url=self._api_url,
@@ -234,12 +240,19 @@ class VLMWorker(QThread):
             )
             jpeg_bytes = self._page_path.read_bytes()
             data_uri = to_base64_data_uri(jpeg_bytes)
-            text = client.process_image(
+
+            accumulated = ""
+            for chunk in client.stream_image(
                 data_uri,
                 system_prompt=self._system_prompt,
                 user_prompt=self._user_prompt,
-            )
-            self.result_ready.emit(text)
+            ):
+                accumulated += chunk
+                self.token_received.emit(chunk)
+
+            from core.vlm_client import strip_thinking_tags
+            self.result_ready.emit(strip_thinking_tags(accumulated))
+
         except Exception as exc:
-            logger.error("VLM test failed: %s", exc)
+            logger.error("VLM stream failed: %s", exc)
             self.error_occurred.emit(str(exc))

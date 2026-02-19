@@ -223,12 +223,16 @@ class SplitProcessingView(QWidget):
         self._scanning_overlay.resize(self._image_view.size())
         self._scanning_overlay.show()
         self._scanning_overlay.start()
-        self._rescan_bar.setRange(0, 0)  # indeterminate pulsing
+        self._rescan_bar.setRange(0, 100)
+        self._rescan_bar.setValue(0)
         self._rescan_bar.show()
+
+    def set_rescan_progress(self, value: int) -> None:
+        """Update the rescan progress bar (0-100)."""
+        self._rescan_bar.setValue(value)
 
     def hide_scanning(self) -> None:
         self._scanning_overlay.stop()
-        self._rescan_bar.setRange(0, 100)
         self._rescan_bar.setValue(100)
         self._rescan_bar.hide()
         

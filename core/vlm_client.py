@@ -1,9 +1,10 @@
 """VLM API client for OpenWebUI chat/completions with vision support."""
 
+import json
 import logging
 import re
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Generator, List, Optional
 
 import requests
 
@@ -115,6 +116,64 @@ class VLMClient:
                 time.sleep(RETRY_BACKOFF_SECONDS)
 
         raise VLMError(f"VLM request failed after {1 + MAX_RETRIES} attempts: {last_error}")
+
+    def stream_image(
+        self,
+        image_data_uri: str,
+        user_prompt: str,
+        system_prompt: Optional[str] = None,
+    ) -> Generator[str, None, None]:
+        """Stream VLM response as text chunks via SSE.
+
+        Yields each text fragment as it arrives from the API.
+        The caller accumulates fragments to form the full response.
+
+        Args:
+            image_data_uri: Base64 data URI of the image.
+            user_prompt: Instruction for this image (User role).
+            system_prompt: Optional global instruction (System role).
+
+        Yields:
+            Raw text fragments (tokens) from the model.
+
+        Raises:
+            VLMAuthError, VLMModelNotFoundError, VLMTimeoutError, VLMError.
+        """
+        headers = self._build_headers()
+        payload = self._build_payload(image_data_uri, user_prompt, system_prompt)
+        payload["stream"] = True
+
+        try:
+            response = requests.post(
+                self._api_url,
+                json=payload,
+                headers=headers,
+                timeout=self._timeout,
+                stream=True,
+            )
+        except requests.exceptions.Timeout as exc:
+            raise VLMTimeoutError(f"Request timed out after {self._timeout}s") from exc
+        except requests.exceptions.ConnectionError as exc:
+            raise VLMError(f"Connection failed: {exc}") from exc
+
+        self._check_status(response)
+
+        for raw_line in response.iter_lines():
+            if not raw_line:
+                continue
+            if not raw_line.startswith(b"data: "):
+                continue
+            data = raw_line[6:]
+            if data == b"[DONE]":
+                break
+            try:
+                chunk = json.loads(data)
+                delta = chunk["choices"][0]["delta"]
+                content = delta.get("content") or ""
+                if content:
+                    yield content
+            except (json.JSONDecodeError, KeyError, IndexError):
+                continue
 
     def _build_headers(self) -> Dict[str, str]:
         """Construct HTTP headers with auth token."""
