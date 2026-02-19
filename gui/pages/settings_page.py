@@ -7,6 +7,7 @@ from PySide6.QtCore import Signal
 import logging
 
 from core.config import Config
+from gui.components.resizable_text_edit import ResizableTextEdit
 
 logger = logging.getLogger(__name__)
 
@@ -107,8 +108,10 @@ class SettingsPage(QWidget):
         group = QGroupBox("Prompts")
         layout = QVBoxLayout(group)
         layout.addWidget(QLabel("System Prompt:"))
-        self._system_prompt_edit = QTextEdit(config.system_prompt)
-        self._system_prompt_edit.setFixedHeight(100)
+        self._system_prompt_edit = ResizableTextEdit(
+            text=config.system_prompt,
+            height=config.system_prompt_height
+        )
         layout.addWidget(self._system_prompt_edit)
         layout.addWidget(QLabel("User Prompt:"))
         self._user_prompt_edit = QTextEdit(config.user_prompt)
@@ -142,6 +145,7 @@ class SettingsPage(QWidget):
         self._config.pdf_dpi = self._dpi_spin.value()
         self._config.max_image_pixels = self._pixels_spin.value()
         self._config.jpeg_quality = self._quality_spin.value()
+        self._config.system_prompt_height = self._system_prompt_edit.get_content_height()
         self._config.system_prompt = self._system_prompt_edit.toPlainText()
         self._config.user_prompt = self._user_prompt_edit.toPlainText()
         self._config.inbox_dir = self._inbox_edit.text()

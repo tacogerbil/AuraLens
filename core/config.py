@@ -39,6 +39,7 @@ class Config:
     outbox_dir: str = ""
     system_prompt: str = field(default=DEFAULT_SYSTEM_PROMPT)
     user_prompt: str = "Extract text from this image."
+    system_prompt_height: int = 100  # Persistence for UI resizing
     
     # Window geometry persistence
     window_width: int = 1600
