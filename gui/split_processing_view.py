@@ -32,8 +32,11 @@ class SplitProcessingView(QWidget):
     """
 
     re_scan_requested = Signal(int)   # page_num
+
     run_ocr_requested = Signal()
     accept_book_requested = Signal()
+    save_page_requested = Signal(int, str) # page_num, text
+    config_requested = Signal()
     navigation_changed = Signal(int)  # page_num
     home_requested = Signal()
 
@@ -100,7 +103,29 @@ class SplitProcessingView(QWidget):
         self._accept_btn.hide()
         header.addWidget(self._accept_btn)
 
+        self._accept_btn.hide()
+        header.addWidget(self._accept_btn)
+
         header.addSpacing(12)
+
+        # Config Button
+        config_btn = QPushButton("⚙ Config")
+        config_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        config_btn.clicked.connect(self.config_requested.emit)
+        config_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: #64748b;
+                border: 1px solid #e2e8f0;
+                border-radius: 6px;
+                padding: 6px 12px;
+                font-weight: 600;
+            }
+            QPushButton:hover { background-color: #f1f5f9; color: #334155; }
+        """)
+        header.addWidget(config_btn)
+        
+        header.addSpacing(4)
 
         back_btn = QPushButton("← Dashboard")
         back_btn.setObjectName("navLink")
@@ -124,12 +149,45 @@ class SplitProcessingView(QWidget):
 
         # Right panel
         self._text_card, text_content_layout = self._create_card("OCR Text Result")
+        
+        # Add Save Button to Text Card Header (customizing create_card would be cleaner, but overlaying or modifying layout works)
+        # We can add it to the card layout before the content?
+        # create_card returns layout. The header is inside. 
+        # Let's add a "Save" button to the bottom right of the text area?
+        # User said: "small red 'save' button on the bottom right corner of the ocr text box (right outside the text area)"
+        
         self._text_edit = QPlainTextEdit()
         self._text_edit.setFont(QFont("monospace", 11))
         self._text_edit.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
         self._text_edit.setStyleSheet("border: none; background: transparent;")
         self._highlighter = MarkdownHighlighter(self._text_edit.document())
         text_content_layout.addWidget(self._text_edit)
+        
+        # Save Button Container
+        save_container = QHBoxLayout()
+        save_container.addStretch()
+        self._save_page_btn = QPushButton("Save Page")
+        self._save_page_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._save_page_btn.clicked.connect(self._on_save_page_clicked)
+        self._save_page_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #fee2e2;
+                color: #ef4444;
+                border: 1px solid #fecaca;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 11px;
+                font-weight: 600;
+            }
+            QPushButton:hover { background-color: #fecaca; }
+        """)
+        save_container.addWidget(self._save_page_btn)
+        save_container.setContentsMargins(0, 4, 12, 4) # Padding
+        
+        # create_card returns content layout. We need to add this button BELOW the text edit but inside the card?
+        # Text edit is in text_content_layout.
+        text_content_layout.addLayout(save_container)
+
         self._splitter.addWidget(self._text_card)
 
         self._splitter.setSizes([500, 700])
@@ -306,6 +364,14 @@ class SplitProcessingView(QWidget):
         self._next_btn.setEnabled(page_num < self._total_pages)
         
         self.navigation_changed.emit(page_num)
+
+    def _on_save_page_clicked(self):
+        """Emit save request with current text."""
+        text = self._text_edit.toPlainText()
+        # Update internal state first
+        if 1 <= self._current_page <= len(self._page_texts):
+             self._page_texts[self._current_page - 1] = text
+        self.save_page_requested.emit(self._current_page, text)
 
     def _save_current_edits(self) -> None:
         if 1 <= self._current_page <= len(self._page_texts):

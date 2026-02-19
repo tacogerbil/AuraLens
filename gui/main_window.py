@@ -117,6 +117,8 @@ class MainWindow(ModernWindow):
         self._process_page.run_ocr_requested.connect(lambda: self._start_ocr(resume=True))
         self._process_page.accept_book_requested.connect(self._on_accept_book)
         self._process_page.re_scan_requested.connect(self._on_re_scan_page)
+        self._process_page.save_page_requested.connect(self._on_save_page_text)
+        self._process_page.config_requested.connect(self._on_settings_page)
         self._process_page.home_requested.connect(self._on_home)
         self._stack.addWidget(self._process_page)
         
@@ -267,7 +269,30 @@ class MainWindow(ModernWindow):
              is_complete = self._orchestrator.is_fully_cached(self._cache_dir)
              self._process_page.set_ocr_completed(is_complete)
              
+             is_complete = self._orchestrator.is_fully_cached(self._cache_dir)
+             self._process_page.set_ocr_completed(is_complete)
+             
              self._stack.setCurrentWidget(self._process_page)
+
+    def _load_from_cache(self):
+        """Load fully processed PDF from cache into Split Processing View."""
+        if not self._cache_dir: return
+
+        page_paths = self._orchestrator.get_page_paths_from_cache(self._cache_dir)
+        # Load text for all pages
+        total = len(page_paths)
+        from core.page_cache import load_page_text
+        
+        self._page_texts = []
+        for i in range(1, total + 1):
+            text = load_page_text(self._cache_dir, i)
+            self._page_texts.append(text)
+
+        self._process_page.load_pages(page_paths, self._page_texts)
+        self._process_page.set_ocr_completed(True)
+        self._stack.setCurrentWidget(self._process_page)
+        self._set_status("Loaded from Cache")
+
 
     def _start_ocr(self, resume: bool = True):
         """Start or resume OCR processing."""
@@ -307,7 +332,18 @@ class MainWindow(ModernWindow):
         # Update internal state and cache immediately
         if 0 <= page_num - 1 < len(self._page_texts):
             self._page_texts[page_num - 1] = text
+        if 0 <= page_num - 1 < len(self._page_texts):
+            self._page_texts[page_num - 1] = text
         save_page_text(self._cache_dir, page_num, text)
+
+    def _on_save_page_text(self, page_num: int, text: str):
+        """Manually save text for a specific page."""
+        if not self._cache_dir: return
+        
+        save_page_text(self._cache_dir, page_num, text)
+        if 0 <= page_num - 1 < len(self._page_texts):
+             self._page_texts[page_num - 1] = text
+        self._set_status(f"Saved Page {page_num}")
 
     def _on_ocr_finished(self):
         self._worker = None
