@@ -16,10 +16,12 @@ from PySide6.QtWidgets import (
     QLabel,
     QMessageBox,
     QStackedLayout,
-    QStackedLayout,
     QWidget,
-    QToolBar, 
-    QFileDialog # Explicit import for options
+    QToolBar,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFrame,
+    QPushButton
 )
 
 from core.config import Config, save_config
