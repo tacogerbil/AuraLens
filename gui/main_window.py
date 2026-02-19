@@ -449,7 +449,7 @@ class MainWindow(ModernWindow):
             timeout=params["timeout"],
             max_tokens=params["max_tokens"],
             temperature=params["temperature"],
-            temperature=params["temperature"],
+
             system_prompt=self._process_page.get_system_prompt(),
             user_prompt=self._process_page.get_user_prompt(),
         )
