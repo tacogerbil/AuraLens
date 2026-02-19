@@ -20,22 +20,7 @@ from PySide6.QtWidgets import (
     QFrame
 )
 
-_GRADIENT_BAR_STYLE = """
-    QProgressBar {
-        border: none;
-        background-color: #f1f5f9;
-        border-radius: 4px;
-        text-align: center;
-    }
-    QProgressBar::chunk {
-        background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-            stop:0    #ef4444,
-            stop:0.33 #f97316,
-            stop:0.66 #eab308,
-            stop:1    #22c55e);
-        border-radius: 4px;
-    }
-"""
+
 
 # from gui.components.card import Card # Removed legacy card import
 from gui.markdown_highlighter import MarkdownHighlighter
@@ -202,11 +187,12 @@ class SplitProcessingView(QWidget):
         layout.addLayout(nav)
 
         # Rescan gradient progress bar (hidden when idle)
-        self._rescan_bar = QProgressBar()
+        from gui.components.gradient_progress_bar import GradientProgressBar
+        self._rescan_bar = GradientProgressBar()
         self._rescan_bar.setRange(0, 0)
         self._rescan_bar.setFixedHeight(8)
         self._rescan_bar.setTextVisible(False)
-        self._rescan_bar.setStyleSheet(_GRADIENT_BAR_STYLE)
+        self._rescan_bar.setStyleSheet("QProgressBar { height: 8px; border: none; background: #f1f5f9; border-radius: 4px; }")
         self._rescan_bar.hide()
         layout.addWidget(self._rescan_bar)
 

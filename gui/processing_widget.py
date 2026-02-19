@@ -88,27 +88,14 @@ class ProcessingWidget(QWidget):
         self._page_label.setStyleSheet("border: none; color: #94a3b8;")
         card_layout.addWidget(self._page_label)
 
-        self._progress_bar = QProgressBar()
+        from gui.components.gradient_progress_bar import GradientProgressBar
+        self._progress_bar = GradientProgressBar()
         self._progress_bar.setRange(0, 100)
         self._progress_bar.setValue(0)
-        self._progress_bar.setStyleSheet("""
-            QProgressBar {
-                border: none;
-                background-color: #f1f5f9;
-                border-radius: 4px;
-                height: 8px;
-                text-align: center;
-            }
-            QProgressBar::chunk {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0    #ef4444,
-                    stop:0.33 #f97316,
-                    stop:0.66 #eab308,
-                    stop:1    #22c55e);
-                border-radius: 4px;
-            }
-        """)
+        self._progress_bar.setStyleSheet("QProgressBar { height: 8px; border: none; background: #f1f5f9; border-radius: 4px; }") # Height hints
+        # Custom paintEvent handles gradient, no stylesheet needed for chunks
         self._progress_bar.setTextVisible(False)
+        self._progress_bar.setFixedHeight(8)
         card_layout.addWidget(self._progress_bar)
 
         bottom_row = QHBoxLayout()
