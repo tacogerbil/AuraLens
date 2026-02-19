@@ -91,7 +91,6 @@ class ProcessingWidget(QWidget):
         self._progress_bar = QProgressBar()
         self._progress_bar.setRange(0, 100)
         self._progress_bar.setValue(0)
-        # Modern ProgressBar Style
         self._progress_bar.setStyleSheet("""
             QProgressBar {
                 border: none;
@@ -101,7 +100,11 @@ class ProcessingWidget(QWidget):
                 text-align: center;
             }
             QProgressBar::chunk {
-                background-color: #4f8cff;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0    #ef4444,
+                    stop:0.33 #f97316,
+                    stop:0.66 #eab308,
+                    stop:1    #22c55e);
                 border-radius: 4px;
             }
         """)

@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPlainTextEdit,
+    QProgressBar,
     QPushButton,
     QSpinBox,
     QSplitter,
@@ -18,6 +19,23 @@ from PySide6.QtWidgets import (
     QWidget,
     QFrame
 )
+
+_GRADIENT_BAR_STYLE = """
+    QProgressBar {
+        border: none;
+        background-color: #f1f5f9;
+        border-radius: 4px;
+        text-align: center;
+    }
+    QProgressBar::chunk {
+        background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+            stop:0    #ef4444,
+            stop:0.33 #f97316,
+            stop:0.66 #eab308,
+            stop:1    #22c55e);
+        border-radius: 4px;
+    }
+"""
 
 # from gui.components.card import Card # Removed legacy card import
 from gui.markdown_highlighter import MarkdownHighlighter
@@ -91,7 +109,15 @@ class SplitProcessingView(QWidget):
         self._nav_layout.addWidget(self._next_btn)
         
         preview_content_layout.addLayout(self._nav_layout)
-        
+
+        self._rescan_bar = QProgressBar()
+        self._rescan_bar.setRange(0, 0)
+        self._rescan_bar.setFixedHeight(8)
+        self._rescan_bar.setTextVisible(False)
+        self._rescan_bar.setStyleSheet(_GRADIENT_BAR_STYLE)
+        self._rescan_bar.hide()
+        preview_content_layout.addWidget(self._rescan_bar)
+
         self._splitter.addWidget(self._preview_card)
 
         # -- Right Panel (Text) --
@@ -190,9 +216,14 @@ class SplitProcessingView(QWidget):
         self._scanning_overlay.resize(self._image_view.size())
         self._scanning_overlay.show()
         self._scanning_overlay.start()
-        
+        self._rescan_bar.setRange(0, 0)  # indeterminate pulsing
+        self._rescan_bar.show()
+
     def hide_scanning(self) -> None:
         self._scanning_overlay.stop()
+        self._rescan_bar.setRange(0, 100)
+        self._rescan_bar.setValue(100)
+        self._rescan_bar.hide()
         
     # ── Internal Logic ──────────────────────────────────────────────
 
