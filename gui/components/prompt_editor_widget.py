@@ -2,7 +2,9 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QSplitter, QLabel, QFrame
 
 from core.config import Config
-from gui.components.resizable_text_edit import ResizableTextEdit
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QSplitter, QLabel, QFrame, QTextEdit
+
+from core.config import Config
 
 class PromptEditorWidget(QWidget):
     """
@@ -45,6 +47,7 @@ class PromptEditorWidget(QWidget):
         
         # Set initial sizes based on content/defaults
         splitter.setSizes([self._config.system_prompt_height, self._config.user_prompt_height])
+        splitter.splitterMoved.connect(self._on_splitter_moved)
 
         layout.addWidget(splitter)
 
@@ -58,25 +61,33 @@ class PromptEditorWidget(QWidget):
         lbl.setStyleSheet("font-weight: bold; color: #334155;")
         layout.addWidget(lbl)
         
-        editor = ResizableTextEdit(text=text, height=height)
+        editor = QTextEdit()
+        editor.setPlainText(text)
         
         # Connect signals for real-time config updates (shared state)
         editor.textChanged.connect(self._sync_to_config)
-        editor.heightChanged.connect(self._sync_to_config)
         
         layout.addWidget(editor)
         
         setattr(self, attr_name, editor)
         return container
 
+    def _on_splitter_moved(self, pos: int, index: int):
+        """Update config height values when splitter acts."""
+        # sizes() returns [height1, height2]
+        # self.sender() is the QSplitter
+        splitter: QSplitter = self.sender()
+        sizes = splitter.sizes()
+        if len(sizes) == 2:
+            self._config.system_prompt_height = sizes[0]
+            self._config.user_prompt_height = sizes[1]
+
     def _sync_to_config(self):
         """Update config object with current values immediately."""
         if hasattr(self, "_system_edit"):
              self._config.system_prompt = self._system_edit.toPlainText()
-             self._config.system_prompt_height = self._system_edit.get_content_height()
         if hasattr(self, "_user_edit"):
              self._config.user_prompt = self._user_edit.toPlainText()
-             self._config.user_prompt_height = self._user_edit.get_content_height()
 
     def get_system_prompt(self) -> str:
         return self._system_edit.toPlainText()

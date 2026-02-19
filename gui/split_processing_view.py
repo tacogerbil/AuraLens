@@ -195,11 +195,11 @@ class SplitProcessingView(QWidget):
         text_content_layout.addLayout(save_container)
 
         self._splitter.addWidget(self._text_card)
-
         self._splitter.setSizes([500, 700])
-        layout.addWidget(self._splitter)
+        
+        # Right panel content layout complete.
 
-        # Centred navigation bar (full-width, below both panels)
+        # ── Navigation Bar (Center) ─────────────────
         nav = QHBoxLayout()
         nav.setSpacing(8)
         nav.addStretch()
@@ -216,7 +216,6 @@ class SplitProcessingView(QWidget):
         self._page_spin.valueChanged.connect(self._on_spinbox_changed)
         nav.addWidget(self._page_spin)
 
-        # Rescan current page button
         self._rescan_btn = QPushButton("↺ Rescan")
         self._rescan_btn.setToolTip("Re-run OCR on current page")
         self._rescan_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -246,24 +245,44 @@ class SplitProcessingView(QWidget):
         self._next_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._next_btn.clicked.connect(self._on_next)
         nav.addWidget(self._next_btn)
-
         nav.addStretch()
-        layout.addLayout(nav)
 
-        # Rescan gradient progress bar (hidden when idle)
+        # Rescan gradient progress bar
         self._rescan_bar = GradientProgressBar()
         self._rescan_bar.setRange(0, 0)
         self._rescan_bar.setFixedHeight(8)
         self._rescan_bar.setTextVisible(False)
         self._rescan_bar.setStyleSheet("QProgressBar { height: 8px; border: none; background: #f1f5f9; border-radius: 4px; }")
         self._rescan_bar.hide()
-        layout.addWidget(self._rescan_bar)
-
-        # Prompts Section (Collapsible or just at bottom)
+        
+        # Container for Top Section (Splitter + Nav + Bar)
+        top_container = QWidget()
+        top_layout = QVBoxLayout(top_container)
+        top_layout.setContentsMargins(0, 0, 0, 0)
+        top_layout.setSpacing(8)
+        top_layout.addWidget(self._splitter) # The horizontal image/text splitter
+        top_layout.addLayout(nav)
+        top_layout.addWidget(self._rescan_bar)
+        
+        # ── Main Vertical Splitter ─────────────────
+        # Top: Image/Text + Nav
+        # Bottom: PromptEditor
+        
         from gui.components.prompt_editor_widget import PromptEditorWidget
         self._prompt_editor = PromptEditorWidget(self._config)
-        self._prompt_editor.setMaximumHeight(200) # Limit height so it doesn't dominate
-        layout.addWidget(self._prompt_editor)
+        
+        self._main_vertical_splitter = QSplitter(Qt.Orientation.Vertical)
+        self._main_vertical_splitter.setHandleWidth(8)
+        self._main_vertical_splitter.setChildrenCollapsible(False)
+        
+        self._main_vertical_splitter.addWidget(top_container)
+        self._main_vertical_splitter.addWidget(self._prompt_editor)
+        
+        # Default ratio: 70% content, 30% prompts (approx)
+        self._main_vertical_splitter.setStretchFactor(0, 3)
+        self._main_vertical_splitter.setStretchFactor(1, 1)
+
+        layout.addWidget(self._main_vertical_splitter)
 
         # Scanning overlay (parented to image view)
         self._scanning_overlay = ScanningOverlay(self._image_view)

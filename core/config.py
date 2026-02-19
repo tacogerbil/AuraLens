@@ -8,12 +8,10 @@ from typing import Any, Dict
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_SYSTEM_PROMPT = (
-    "You are an OCR assistant. Extract ALL text from this image exactly as it appears. "
-    "Preserve paragraph breaks, line breaks, and formatting. "
-    "Do not add commentary, interpretation, or markdown formatting. "
-    "Output only the raw extracted text."
-)
+DEFAULT_SYSTEM_PROMPT = """You are an OCR assistant. Extract ALL text from this image exactly as it appears.
+Preserve paragraph breaks, line breaks, and formatting.
+Do not add commentary, interpretation, or markdown formatting.
+Output only the raw extracted text."""
 
 CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
 CONFIG_PATH = CONFIG_DIR / "settings.json"
