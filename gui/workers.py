@@ -14,6 +14,8 @@ from core.image_utils import to_base64_data_uri
 from core.page_cache import (
     cache_dir_for_pdf,
     extract_single_page,
+    get_page_number,
+    load_page_text,
     page_image_path,
 )
 from core.pdf_processor import PDFProcessor
@@ -184,3 +186,60 @@ class OCRWorker(QThread):
             user_prompt=self._user_prompt,
             system_prompt=self._system_prompt,
         )
+
+
+class VLMWorker(QThread):
+    """Process a single page image through the VLM off the main thread.
+
+    Used by PromptTesterPage for interactive prompt testing without
+    blocking the GUI event loop.
+    """
+
+    result_ready = Signal(str)
+    error_occurred = Signal(str)
+
+    def __init__(
+        self,
+        page_path: Path,
+        api_url: str,
+        api_key: str,
+        model_name: str,
+        timeout: int,
+        max_tokens: int,
+        temperature: float,
+        system_prompt: str,
+        user_prompt: str,
+    ) -> None:
+        super().__init__()
+        self._page_path = page_path
+        self._api_url = api_url
+        self._api_key = api_key
+        self._model_name = model_name
+        self._timeout = timeout
+        self._max_tokens = max_tokens
+        self._temperature = temperature
+        self._system_prompt = system_prompt
+        self._user_prompt = user_prompt
+
+    def run(self) -> None:
+        """Execute single-page VLM call and emit result or error."""
+        try:
+            client = VLMClient(
+                api_url=self._api_url,
+                api_key=self._api_key,
+                model_name=self._model_name,
+                timeout=self._timeout,
+                max_tokens=self._max_tokens,
+                temperature=self._temperature,
+            )
+            jpeg_bytes = self._page_path.read_bytes()
+            data_uri = to_base64_data_uri(jpeg_bytes)
+            text = client.process_image(
+                data_uri,
+                system_prompt=self._system_prompt,
+                user_prompt=self._user_prompt,
+            )
+            self.result_ready.emit(text)
+        except Exception as exc:
+            logger.error("VLM test failed: %s", exc)
+            self.error_occurred.emit(str(exc))

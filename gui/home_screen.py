@@ -59,14 +59,18 @@ class HomeScreen(QWidget):
             grid.addWidget(card, *pos)
             
         layout.addLayout(grid)
+
+        self._status_label = QLabel("")
+        self._status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._status_label.setStyleSheet("color: #64748b; font-size: 13px; padding: 4px;")
+        layout.addWidget(self._status_label)
+
         layout.addStretch()
-        
-        # Optional: Keep Recent Files if desired, but stylistically matching reference first.
-        # Reference app.py does NOT have recent files. 
-        # I will comment it out or leave it minimal to ensure "Clean" look requested.
-        
+
     def set_current_file(self, path: Path, status: str) -> None:
-        """Update status - maybe separate label or toast?"""
-        # Reference app doesn't show status on dashboard, it switches pages.
-        pass
+        """Show the loaded file name and its cache status on the dashboard."""
+        if path:
+            self._status_label.setText(f"{path.name}  [{status}]")
+        else:
+            self._status_label.setText("")
 

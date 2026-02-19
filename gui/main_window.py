@@ -32,7 +32,7 @@ from gui.inbox_coordinator import InboxCoordinator
 from gui.inbox_monitor import InboxMonitor
 from gui.processing_widget import ProcessingWidget
 from gui.save_manager import SaveManager
-from gui.workers import ExtractionWorker, OCRWorker
+from gui.workers import ExtractionWorker, OCRWorker, VLMWorker
 
 # New UI Components
 from gui.modern_window import ModernWindow
@@ -94,11 +94,7 @@ class MainWindow(ModernWindow):
     def _setup_ui(self):
         """Reference Architecture: Header + QStackedWidget."""
         
-        # Main Container (Vertical: Header, Stack)
-        container = QWidget()
-        self.setCentralWidget(container) # ModernWindow might need adaptation if we use its content area
-        # Actually ModernWindow has _content_area. Let's use that.
-        
+        # Use _content_area provided by ModernWindow (already set as central widget)
         main_layout = QVBoxLayout(self._content_area)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
@@ -296,9 +292,22 @@ class MainWindow(ModernWindow):
             self._worker.cancel()
         self._on_home()
         
-    def _restore_window_geometry(self):
+    def _restore_window_geometry(self) -> None:
+        from PySide6.QtWidgets import QApplication
         self.resize(self._config.window_width, self._config.window_height)
-        if self._config.window_x >= 0: self.move(self._config.window_x, self._config.window_y)
+        screen = QApplication.primaryScreen().availableGeometry()
+        x, y = self._config.window_x, self._config.window_y
+        if x > 0 and y > 0:
+            # Clamp to screen so window can't be placed fully off-screen
+            x = min(x, screen.right() - self.width())
+            y = min(y, screen.bottom() - self.height())
+            self.move(max(screen.left(), x), max(screen.top(), y))
+        else:
+            # Centre on screen
+            self.move(
+                screen.center().x() - self.width() // 2,
+                screen.center().y() - self.height() // 2,
+            )
 
     def closeEvent(self, event):
         self._config.window_width = self.width()
@@ -308,10 +317,33 @@ class MainWindow(ModernWindow):
         save_config(self._config)
         event.accept()
         
-    # Re-scan Logic (Simplified)
-    def _on_re_scan_page(self, page_num):
-         # ... (Use existing logic, just adaptable)
-         pass
+    # ── Re-scan Logic ────────────────────────────────────────────────
 
-from gui.pages.settings_page import SettingsPage
-from gui.pages.prompt_tester_page import PromptTesterPage
+    def _on_re_scan_page(self, page_num: int) -> None:
+        """Re-run OCR on a single page without leaving the split view."""
+        if not self._cache_dir:
+            return
+        page_paths = self._orchestrator.get_page_paths_from_cache(self._cache_dir)
+        if not (1 <= page_num <= len(page_paths)):
+            return
+
+        self._process_page.show_scanning()
+        params = self._orchestrator.get_ocr_params()
+        self._worker = OCRWorker(
+            page_paths=[page_paths[page_num - 1]],
+            skip_pages=set(),
+            **params,
+        )
+        self._worker.page_completed.connect(self._on_rescan_complete)
+        self._worker.page_error.connect(
+            lambda _pn, msg: self._on_rescan_error(msg)
+        )
+        self._worker.processing_finished.connect(self._process_page.hide_scanning)
+        self._worker.start()
+
+    def _on_rescan_complete(self, page_num: int, _total: int, text: str) -> None:
+        """Update split view with freshly scanned text."""
+        self._process_page.update_page_text(page_num, text)
+
+    def _on_rescan_error(self, msg: str) -> None:
+        QMessageBox.warning(self, "Re-scan Error", f"Re-scan failed: {msg}")

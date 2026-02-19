@@ -110,7 +110,6 @@ class ModernWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         
         # Main container to act as the "Window" background
         self._container = QWidget()
@@ -144,10 +143,8 @@ class ModernWindow(QMainWindow):
              self._title_bar._title_label.setText(title)
 
     def _update_styles(self):
-        """Set container style to match theme window color."""
-        # This ensures the rounded corners or border exists if we wanted
-        # For now, just robust background
-        pass 
+        """Set container background to match theme window color."""
+        self._container.setAutoFillBackground(True)
 
     # ── Geometry & Resizing ─────────────────────────────────────────
 

@@ -177,6 +177,14 @@ class SplitProcessingView(QWidget):
         
     def current_page(self) -> int:
         return self._current_page
+
+    def update_page_text(self, page_num: int, text: str) -> None:
+        """Update stored text for a page and refresh display if it is current."""
+        idx = page_num - 1
+        if 0 <= idx < len(self._page_texts):
+            self._page_texts[idx] = text
+        if self._current_page == page_num:
+            self._text_edit.setPlainText(text)
         
     def show_scanning(self) -> None:
         self._scanning_overlay.resize(self._image_view.size())
