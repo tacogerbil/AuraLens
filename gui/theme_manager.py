@@ -128,92 +128,48 @@ class ThemeManager:
 
     @classmethod
     def _apply_stylesheet(cls, app: QApplication, colors: ThemeColors) -> None:
-        """Apply QSS using the color palette."""
+        """Apply Global QSS using the Reference Strategy (app.py)."""
+        
+        # Reference Gradient Background
+        # "background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #eaf2ff, stop:1 #dbe7ff);"
+        
         qss = f"""
         QMainWindow {{
-            background-color: {colors.window};
+            background: qlineargradient(
+                x1:0, y1:0, x2:1, y2:1,
+                stop:0 #eaf2ff,
+                stop:1 #dbe7ff
+            );
         }}
-        /* Dialog Customization */
-        QFileDialog {{
-            background-color: {colors.surface_container};
-            border: 2px solid {colors.highlight}; /* Strong blue border */
-            border-radius: 8px;
-        }}
-        QDialog {{
-            background-color: {colors.surface_container};
-            border: 2px solid {colors.highlight}; /* Strong blue border */
-            border-radius: 8px;
-        }}
-        /* Ensure ListView/TreeView in FileDialog is visible */
         QWidget {{
-            background-color: {colors.window};
-            color: {colors.text};
             font-family: 'Segoe UI', sans-serif;
             font-size: 14px;
+            color: #2c3e50;
         }}
-        QFrame {{
-            border: none;
-        }}
-        /* Specific overrides for commonly styled widgets */
-        QLineEdit, QTextEdit, QPlainTextEdit {{
-            background-color: {colors.surface_container}; /* Match Card background */
-            color: {colors.text};
-            border: 1px solid {colors.card_border};
-            border-radius: 4px;
-            padding: 4px;
-        }}
+        /* Global Button Styling from Reference */
         QPushButton {{
-            background-color: {colors.button};
-            color: {colors.button_text};
-            border: 1px solid {colors.card_border};
-            border-radius: 4px;
-            padding: 6px 12px;
+            padding: 8px 14px;
+            border-radius: 10px;
+            background-color: #4f8cff;
+            color: white;
+            border: none;
+            font-weight: 600;
         }}
         QPushButton:hover {{
-            background-color: {colors.highlight};
-            color: {colors.highlighted_text};
-            border: 1px solid {colors.highlight};
+            background-color: #3a73e8;
         }}
-        QPushButton:pressed {{
-            background-color: {colors.highlight}; /* Darker? */
+        
+        /* Dialogs need to stand out against the gradient */
+        QDialog {{
+            background: white;
+            border-radius: 16px;
         }}
-        QScrollBar:vertical {{
-            border: none;
-            background: {colors.window};
-            width: 10px;
-            margin: 0px 0px 0px 0px;
-        }}
-        QScrollBar::handle:vertical {{
-            background: {colors.card_border};
-            min-height: 20px;
-            border-radius: 5px;
-        }}
-        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
-            height: 0px;
-        }}
-        QSplitter::handle {{
-            background-color: {colors.card_border};
-            width: 1px;
-        }}
-        QToolTip {{
-            background-color: {colors.surface_container_high};
-            color: {colors.text};
-            border: 1px solid {colors.card_border};
-        }}
-        /* Tab Widget */
-        QTabWidget::pane {{
-            border: 1px solid {colors.card_border};
-        }}
-        QTabBar::tab {{
-            background: {colors.button};
-            color: {colors.button_text};
-            padding: 8px 12px;
-            border-top-left-radius: 4px;
-            border-top-right-radius: 4px;
-        }}
-        QTabBar::tab:selected {{
-            background: {colors.surface_container};
-            border-bottom-color: {colors.surface_container}; /* Blend with pane */
+        
+        /* Helper for specific labels */
+        QLabel#mainTitle {{
+            font-size: 32px;
+            font-weight: 700;
+            color: #2c3e50;
         }}
         """
         app.setStyleSheet(qss)

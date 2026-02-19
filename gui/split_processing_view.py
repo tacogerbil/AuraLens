@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QFrame
 )
 
-from gui.components.card import Card
+# from gui.components.card import Card # Removed legacy card import
 from gui.markdown_highlighter import MarkdownHighlighter
 from gui.zoomable_view import ZoomableGraphicsView
 
