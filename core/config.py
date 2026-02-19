@@ -50,12 +50,25 @@ class Config:
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize config to a plain dictionary."""
-        return asdict(self)
+        data = asdict(self)
+        # Save prompts as list of strings for better readability in JSON
+        if isinstance(data.get("system_prompt"), str):
+            data["system_prompt"] = data["system_prompt"].splitlines()
+        if isinstance(data.get("user_prompt"), str):
+            data["user_prompt"] = data["user_prompt"].splitlines()
+        return data
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Config":
         """Create Config from dict, ignoring unknown keys."""
         known_fields = {f.name for f in cls.__dataclass_fields__.values()}
+        
+        # Handle list-of-strings format for prompts (backward compatibility for string format)
+        if isinstance(data.get("system_prompt"), list):
+            data["system_prompt"] = "\n".join(data["system_prompt"])
+        if isinstance(data.get("user_prompt"), list):
+            data["user_prompt"] = "\n".join(data["user_prompt"])
+            
         filtered = {k: v for k, v in data.items() if k in known_fields}
         return cls(**filtered)
 
