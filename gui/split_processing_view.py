@@ -25,6 +25,8 @@ from PySide6.QtWidgets import (
 # from gui.components.card import Card # Removed legacy card import
 from gui.markdown_highlighter import MarkdownHighlighter
 from gui.zoomable_view import ZoomableGraphicsView
+from gui.components.gradient_progress_bar import GradientProgressBar
+from gui.scanning_overlay import ScanningOverlay
 
 class SplitProcessingView(QWidget):
     """
@@ -150,12 +152,6 @@ class SplitProcessingView(QWidget):
         # Right panel
         self._text_card, text_content_layout = self._create_card("OCR Text Result")
         
-        # Add Save Button to Text Card Header (customizing create_card would be cleaner, but overlaying or modifying layout works)
-        # We can add it to the card layout before the content?
-        # create_card returns layout. The header is inside. 
-        # Let's add a "Save" button to the bottom right of the text area?
-        # User said: "small red 'save' button on the bottom right corner of the ocr text box (right outside the text area)"
-        
         self._text_edit = QPlainTextEdit()
         self._text_edit.setFont(QFont("monospace", 11))
         self._text_edit.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
@@ -245,7 +241,6 @@ class SplitProcessingView(QWidget):
         layout.addLayout(nav)
 
         # Rescan gradient progress bar (hidden when idle)
-        from gui.components.gradient_progress_bar import GradientProgressBar
         self._rescan_bar = GradientProgressBar()
         self._rescan_bar.setRange(0, 0)
         self._rescan_bar.setFixedHeight(8)
@@ -255,7 +250,6 @@ class SplitProcessingView(QWidget):
         layout.addWidget(self._rescan_bar)
 
         # Scanning overlay (parented to image view)
-        from gui.scanning_overlay import ScanningOverlay
         self._scanning_overlay = ScanningOverlay(self._image_view)
         self._scanning_overlay.hide()
 

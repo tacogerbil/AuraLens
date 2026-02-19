@@ -27,7 +27,6 @@ from core.workflow_orchestrator import WorkflowOrchestrator
 from gui.inbox_coordinator import InboxCoordinator
 from gui.inbox_monitor import InboxMonitor
 from gui.processing_widget import ProcessingWidget
-from gui.save_manager import SaveManager
 
 from gui.workers import ExtractionWorker, OCRWorker, VLMWorker
 from core.book_assembler import BookAssembler
@@ -71,7 +70,6 @@ class MainWindow(ModernWindow):
 
         # Modules
         self._orchestrator = WorkflowOrchestrator(config)
-        self._save_manager = SaveManager(config)
         self._inbox_coordinator = InboxCoordinator(config, parent=self)
 
         # UI Setup
@@ -330,8 +328,6 @@ class MainWindow(ModernWindow):
     def _on_page_ocr_completed(self, page_num: int, total: int, text: str):
         self._processing_widget.update_page(page_num, total)
         # Update internal state and cache immediately
-        if 0 <= page_num - 1 < len(self._page_texts):
-            self._page_texts[page_num - 1] = text
         if 0 <= page_num - 1 < len(self._page_texts):
             self._page_texts[page_num - 1] = text
         save_page_text(self._cache_dir, page_num, text)
