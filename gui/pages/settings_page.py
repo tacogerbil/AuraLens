@@ -40,13 +40,9 @@ class SettingsPage(QWidget):
         api_group = QGroupBox("API Keys")
         api_layout = QGridLayout(api_group)
         
-        api_layout.addWidget(QLabel("Gemini Key:"), 0, 0)
-        self._gemini_edit = QLineEdit(config.gemini_key)
-        api_layout.addWidget(self._gemini_edit, 0, 1)
-        
-        api_layout.addWidget(QLabel("DeepSeek Key:"), 1, 0)
-        self._deepseek_edit = QLineEdit(config.deepseek_key)
-        api_layout.addWidget(self._deepseek_edit, 1, 1)
+        api_layout.addWidget(QLabel("API Key:"), 0, 0)
+        self._api_key_edit = QLineEdit(config.api_key)
+        api_layout.addWidget(self._api_key_edit, 0, 1)
         
         card_layout.addWidget(api_group)
         
@@ -98,8 +94,7 @@ class SettingsPage(QWidget):
 
     def _on_save(self):
         """Update config object and emit saved signal."""
-        self._config.gemini_key = self._gemini_edit.text()
-        self._config.deepseek_key = self._deepseek_edit.text()
+        self._config.api_key = self._api_key_edit.text()
         self._config.inbox_dir = self._inbox_edit.text()
         self._config.outbox_dir = self._outbox_edit.text()
         self._config.temperature = self._temp_spin.value()
