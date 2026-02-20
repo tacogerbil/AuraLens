@@ -7,7 +7,7 @@ Supports plain text, Markdown, and EPUB formats.
 import logging
 import re
 from pathlib import Path
-from typing import List, Set
+from typing import List, Set, Tuple
 
 from ebooklib import epub
 
@@ -92,6 +92,52 @@ class BookAssembler:
             # We try direct write which might truncate if it crashes, but better than nothing
             logger.warning("Atomic rename failed for %s, falling back to direct write", path)
             path.write_text(content, encoding="utf-8")
+
+    def join_pages(self, page_texts: List[str]) -> str:
+        """Join page texts with smart boundary detection.
+
+        Rules applied at each page boundary:
+        - Last word ends with '-': strip hyphen, concatenate directly (de-hyphenation).
+        - Last chars are '...': join with single space (continuation).
+        - Last char is '.', '?', '!': insert 3 blank lines (new paragraph/section).
+        - Last char is ':' or ';': join with single space (continuation).
+        - Anything else (mid-sentence break): join with single space.
+
+        Leading and trailing whitespace is stripped from each page first.
+        Empty pages are skipped.
+        """
+        pages = [p.strip() for p in page_texts]
+        pages = [p for p in pages if p]
+        if not pages:
+            return ""
+        result = pages[0]
+        for next_page in pages[1:]:
+            result = self._join_boundary(result, next_page)
+        return result
+
+    @staticmethod
+    def _join_boundary(left: str, right: str) -> str:
+        """Apply boundary rule between two adjacent page texts."""
+        left_s = left.rstrip()
+        right_s = right.lstrip()
+        if not left_s:
+            return right_s
+        if not right_s:
+            return left_s
+        # De-hyphenation (must precede period check)
+        if left_s.endswith("-"):
+            return left_s[:-1] + right_s
+        # Ellipsis — sentence continues
+        if left_s.endswith("..."):
+            return left_s + " " + right_s
+        # Full stop — new paragraph
+        if left_s[-1] in ".?!":
+            return left_s + "\n\n\n\n" + right_s
+        # Colon / semicolon — continuation
+        if left_s[-1] in ":;":
+            return left_s + " " + right_s
+        # Default: mid-sentence, join with space
+        return left_s + " " + right_s
 
     def save_as_epub(
         self,

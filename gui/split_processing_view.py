@@ -115,9 +115,6 @@ class SplitProcessingView(QWidget):
         self._accept_btn.hide()
         header.addWidget(self._accept_btn)
 
-        self._accept_btn.hide()
-        header.addWidget(self._accept_btn)
-
         header.addSpacing(12)
 
         # Config Button

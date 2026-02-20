@@ -111,7 +111,7 @@ class MainWindow(ModernWindow):
         self._stack.addWidget(self._dashboard_page)
         
         # Index 1: Processing (Split View)
-        self._process_page = SplitProcessingView()
+        self._process_page = SplitProcessingView(self._config)
         self._process_page.run_ocr_requested.connect(lambda: self._start_ocr(resume=True))
         self._process_page.accept_book_requested.connect(self._on_accept_book)
         self._process_page.re_scan_requested.connect(self._on_re_scan_page)
@@ -149,17 +149,25 @@ class MainWindow(ModernWindow):
     def _on_home(self):
         self._stack.setCurrentWidget(self._dashboard_page)
         
-    def _on_process_page(self):
-        # If no PDF, open dialog
+    def _on_process_page(self) -> None:
         if not self._current_pdf_path:
-             self._on_open_pdf()
-             if not self._current_pdf_path: return
-             
-        # Check cache
-        if self._orchestrator.is_fully_cached(self._orchestrator.get_cache_dir_for_pdf(self._current_pdf_path)):
-             self._load_from_cache()
+            self._on_open_pdf()
+            if not self._current_pdf_path:
+                return
+
+        self._cache_dir = self._orchestrator.get_cache_dir_for_pdf(self._current_pdf_path)
+        page_images = self._orchestrator.get_page_paths_from_cache(self._cache_dir)
+
+        if not page_images:
+            # Nothing cached — extract first
+            self._start_extraction()
+        elif self._orchestrator.is_fully_cached(self._cache_dir):
+            # Everything done — load directly into split view
+            self._load_from_cache()
         else:
-             self._start_extraction()
+            # Images exist but OCR is missing or partial — start OCR immediately
+            self._page_texts = list_cached_page_texts(self._cache_dir)
+            self._start_ocr(resume=True)
 
     def _on_test_prompt_page(self):
         if not self._cache_dir or not self._cache_dir.exists():
@@ -231,9 +239,10 @@ class MainWindow(ModernWindow):
         self._inbox_coordinator.queue_pdf(Path(str(pdf_path)))
         self._inbox_coordinator.process_next_if_ready(self._is_processing)
 
-    def _on_inbox_processing_requested(self, pdf_path):
+    def _on_inbox_processing_requested(self, pdf_path: Path) -> None:
         self._auto_mode = True
         self._current_pdf_path = pdf_path
+        self._cache_dir = self._orchestrator.get_cache_dir_for_pdf(pdf_path)
         self._page_texts.clear()
         self._start_extraction()
 
@@ -256,21 +265,9 @@ class MainWindow(ModernWindow):
         self._cache_dir = Path(cache_dir)
         self._worker = None
         
-        if self._auto_mode:
-            self._start_ocr(resume=True)
-        else:
-             # Load Split View
-             page_paths = self._orchestrator.get_page_paths_from_cache(self._cache_dir)
-             if not self._page_texts: self._page_texts = [""] * total
-             self._process_page.load_pages(page_paths, self._page_texts)
-             # Check if completed (e.g. from previous run) to show correct buttons
-             is_complete = self._orchestrator.is_fully_cached(self._cache_dir)
-             self._process_page.set_ocr_completed(is_complete)
-             
-             is_complete = self._orchestrator.is_fully_cached(self._cache_dir)
-             self._process_page.set_ocr_completed(is_complete)
-             
-             self._stack.setCurrentWidget(self._process_page)
+        # Always proceed to OCR after extraction (auto or manual)
+        self._page_texts = [""] * total
+        self._start_ocr(resume=True)
 
     def _load_from_cache(self):
         """Load fully processed PDF from cache into Split Processing View."""
@@ -359,46 +356,53 @@ class MainWindow(ModernWindow):
         self._stack.setCurrentWidget(self._process_page)
         self._set_status("OCR Completed")
 
-    def _on_accept_book(self):
-        """Compile all pages and save to user-selected file."""
-        if not self._page_texts:
+    def _on_accept_book(self) -> None:
+        """Compile all pages with smart boundary joining and save to file."""
+        texts = self._process_page.get_all_texts()
+        if not any(t.strip() for t in texts):
             QMessageBox.warning(self, "Empty Book", "No text to save.")
             return
 
-        # 1. Update with latest edits from UI
-        self._page_texts = self._process_page.get_all_texts()
-        
-        # 2. Ask user for save location
+        self._page_texts = texts
         default_name = self._current_pdf_path.stem if self._current_pdf_path else "book"
-        path, _ = QFileDialog.getSaveFileName(
+        path_str, chosen_filter = QFileDialog.getSaveFileName(
             self, "Save Book", f"{default_name}.txt", _SAVE_FILTERS
         )
-        
-        if not path:
+        if not path_str:
             return
-            
-        output_path = Path(path)
-        assembler = BookAssembler()
-        
-        try:
-            if output_path.suffix == ".txt":
-                assembler.save_to_file(self._page_texts, output_path)
-            elif output_path.suffix == ".md":
-                assembler.save_as_markdown(self._page_texts, output_path)
-            elif output_path.suffix == ".epub":
-                assembler.save_as_epub(self._page_texts, output_path, title=default_name)
-            
-            QMessageBox.information(self, "Saved", f"Book saved to:\n{output_path}")
-            self._set_status(f"Saved: {output_path.name}")
-            
-        except Exception as e:
-            logger.error("Failed to save book: %s", e)
-            QMessageBox.critical(self, "Save Error", f"Could not save file:\n{e}")
 
-    def _on_cancel_processing(self):
+        output_path = Path(path_str)
+        try:
+            if output_path.suffix == ".epub" or "EPUB" in chosen_filter:
+                BookAssembler().save_as_epub(texts, output_path, title=default_name)
+            else:
+                # Smart join: de-hyphenate, merge mid-sentence, 3-line gaps at paragraph ends
+                joined = BookAssembler().join_pages(texts)
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                output_path.write_text(joined, encoding="utf-8")
+
+            self._set_status(f"Saved: {output_path.name}")
+            QMessageBox.information(self, "Book Saved", f"Saved to:\n{output_path}")
+        except Exception as exc:
+            logger.error("Failed to save book: %s", exc)
+            QMessageBox.critical(self, "Save Error", f"Could not save file:\n{exc}")
+
+    def _on_cancel_processing(self) -> None:
         if self._worker:
             self._worker.cancel()
-        self._on_home()
+        self._is_processing = False
+        self._worker = None
+
+        page_paths = (
+            self._orchestrator.get_page_paths_from_cache(self._cache_dir)
+            if self._cache_dir else []
+        )
+        if page_paths:
+            self._process_page.load_pages(page_paths, self._page_texts)
+            self._process_page.set_ocr_completed(False)  # Show "Run OCR" to resume
+            self._stack.setCurrentWidget(self._process_page)
+        else:
+            self._on_home()
         
     def _restore_window_geometry(self) -> None:
         from PySide6.QtWidgets import QApplication
@@ -467,8 +471,12 @@ class MainWindow(ModernWindow):
         self._process_page.set_rescan_progress(pct)
 
     def _on_rescan_complete(self, text: str) -> None:
-        """Update split view with freshly scanned text."""
+        """Persist freshly scanned text to cache and update split view."""
+        if self._cache_dir:
+            save_page_text(self._cache_dir, self._rescan_page_num, text)
         self._process_page.update_page_text(self._rescan_page_num, text)
+        if 1 <= self._rescan_page_num <= len(self._page_texts):
+            self._page_texts[self._rescan_page_num - 1] = text
 
     def _on_rescan_error(self, msg: str) -> None:
         QMessageBox.warning(self, "Re-scan Error", f"Re-scan failed: {msg}")
